@@ -68,23 +68,26 @@ class CaffyRuteGoogleMaps {
         });
     }
 
-    // Search for nearby cafes using Google Places API
+    // Search for nearby cafes using Google Places API with enhanced filtering
     searchNearbyCafes(radius = 5000) {
         const request = {
             location: this.userLocation,
             radius: radius,
             type: ['cafe', 'bakery', 'restaurant'],
-            keyword: 'coffee',
+            keyword: 'coffee espresso latte cappuccino tea',
             fields: [
                 'place_id', 'name', 'geometry', 'rating', 'user_ratings_total',
                 'price_level', 'photos', 'opening_hours', 'formatted_address',
-                'types', 'website', 'formatted_phone_number'
+                'types', 'website', 'formatted_phone_number', 'reviews',
+                'business_status', 'international_phone_number', 'url'
             ]
         };
 
         this.service.nearbySearch(request, (results, status) => {
             if (status === google.maps.places.PlacesServiceStatus.OK) {
-                this.processCafeResults(results);
+                // Filter out cyber cafes and non-coffee places
+                const filteredResults = this.filterValidCafes(results);
+                this.processCafeResults(filteredResults);
             } else {
                 console.error('Places search failed:', status);
                 this.showError('Unable to find nearby cafes. Please try again.');
@@ -92,13 +95,61 @@ class CaffyRuteGoogleMaps {
         });
     }
 
-    // Process cafe search results
+    // Filter out cyber cafes and invalid establishments
+    filterValidCafes(results) {
+        return results.filter(place => {
+            const name = place.name.toLowerCase();
+            const types = place.types || [];
+            
+            // Exclude cyber cafes, internet cafes, gaming centers
+            const excludeKeywords = [
+                'cyber', 'internet', 'gaming', 'computer', 'pc', 'laptop',
+                'net cafe', 'cyber cafe', 'game', 'xbox', 'playstation',
+                'computers', 'wifi center', 'browsing', 'typing', 'xerox',
+                'photocopy', 'printing', 'scan', 'email', 'net center'
+            ];
+            
+            const hasExcludedKeyword = excludeKeywords.some(keyword => 
+                name.includes(keyword)
+            );
+            
+            // Exclude non-food business types
+            const excludedTypes = [
+                'electronics_store', 'computer_repair', 'internet_cafe',
+                'library', 'university', 'school', 'bank', 'atm'
+            ];
+            
+            const hasExcludedType = excludedTypes.some(type => 
+                types.includes(type)
+            );
+            
+            // Must have food/beverage related types
+            const validTypes = [
+                'cafe', 'coffee_shop', 'bakery', 'restaurant', 'food',
+                'meal_takeaway', 'meal_delivery'
+            ];
+            
+            const hasValidType = validTypes.some(type => 
+                types.includes(type)
+            );
+            
+            // Additional check for coffee-related keywords in name
+            const coffeeKeywords = ['coffee', 'cafe', 'espresso', 'latte', 'bean', 'brew', 'roast'];
+            const hasCoffeeKeyword = coffeeKeywords.some(keyword => 
+                name.includes(keyword)
+            );
+            
+            return !hasExcludedKeyword && !hasExcludedType && (hasValidType || hasCoffeeKeyword);
+        });
+    }
+
+    // Process cafe search results with enhanced details
     async processCafeResults(results) {
         this.cafes = [];
         const detailPromises = [];
 
         // Get detailed information for each cafe
-        for (let i = 0; i < Math.min(results.length, 20); i++) {
+        for (let i = 0; i < Math.min(results.length, 25); i++) {
             const place = results[i];
             detailPromises.push(this.getPlaceDetails(place.place_id));
         }
@@ -107,18 +158,32 @@ class CaffyRuteGoogleMaps {
             const detailedResults = await Promise.all(detailPromises);
             this.cafes = detailedResults.filter(cafe => cafe !== null);
             
-            // Sort by rating and distance
+            // Calculate distances for all cafes
+            this.cafes.forEach(cafe => {
+                cafe.distance = this.calculateDistance(
+                    this.userLocation.lat, this.userLocation.lng,
+                    cafe.geometry.location.lat(), cafe.geometry.location.lng()
+                );
+            });
+            
+            // Sort by distance first (closest first), then by rating
             this.cafes.sort((a, b) => {
-                if (b.rating !== a.rating) {
-                    return b.rating - a.rating;
+                // Primary sort by distance
+                const distanceDiff = a.distance - b.distance;
+                if (Math.abs(distanceDiff) > 0.1) { // Only if distance difference is significant
+                    return distanceDiff;
                 }
-                return a.distance - b.distance;
+                // Secondary sort by rating if distances are similar
+                return (b.rating || 0) - (a.rating || 0);
             });
 
             this.displayCafes();
             this.addMapMarkers();
         } catch (error) {
             console.error('Error processing cafe results:', error);
+            this.showError('Error loading cafe details. Please try again.');
+        } finally {
+            this.hideLoading();
         }
     }
 
@@ -307,8 +372,8 @@ class CaffyRuteGoogleMaps {
                 <button class="heart-btn" onclick="toggleFavorite(this, '${cafe.id}')">
                     <i class="far fa-heart"></i>
                 </button>
-                <button class="btn-secondary" onclick="showCafeDetails('${cafe.id}')">View Details</button>
-                <button class="btn-primary" onclick="getDirections(${cafe.location.lat}, ${cafe.location.lng}, '${cafe.name}')">Get Directions</button>
+                <button class="btn-secondary" onclick="window.caffyRuteApp.showCafeDetails('${cafe.id}')">View Details</button>
+                <button class="btn-primary" onclick="window.caffyRuteApp.getDirections(${cafe.location.lat}, ${cafe.location.lng}, '${cafe.name}')">Get Directions</button>
             </div>
         `;
 
