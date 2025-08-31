@@ -1,0 +1,60 @@
+/* CSS fixes for cafe list visibility issues */
+
+/* Make sure the cafe list is always visible when loaded */
+.cafe-list {
+    display: block;
+    min-height: 200px;
+}
+
+/* Add styles for loading element */
+#loading-cafes {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+    background: #f9f5f1;
+    border-radius: 10px;
+    margin: 2rem 0;
+    border: 1px solid #e6d9c9;
+    text-align: center;
+}
+
+#loading-cafes p {
+    margin-top: 1rem;
+    font-size: 1.1rem;
+    color: #5a4534;
+}
+
+/* Fix for cafe items layout */
+.cafe-item {
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    transition: all 0.3s ease;
+    position: relative;
+    margin-bottom: 1.5rem;
+}
+
+/* Make sure each section is properly visible */
+.section-header,
+.map-container,
+.sort-filter-bar,
+.cafe-list,
+#loading-cafes {
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Fix for when the cafe list is empty */
+.cafe-list:empty {
+    display: block;
+    min-height: 100px;
+    background: #f9f5f1;
+    border-radius: 10px;
+    padding: 2rem;
+    text-align: center;
+}
