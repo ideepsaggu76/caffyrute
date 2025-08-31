@@ -768,8 +768,8 @@ class CaffyRuteGoogleMaps {
             return;
         }
         
-        // Limit results for faster processing (show top 15 closest)
-        const limitedResults = results.slice(0, 15);
+        // Limit results for processing (show top 30 results instead of 15)
+        const limitedResults = results.slice(0, 30);
         console.log('Processing limited results:', limitedResults.length);
         
         // Process cafes in batches for better performance
@@ -1192,8 +1192,8 @@ class CaffyRuteGoogleMaps {
         // Use document fragment for better performance
         const fragment = document.createDocumentFragment();
         
-        // Limit initial render to first 8 cafes for speed
-        const visibleCafes = this.cafes.slice(0, 8);
+        // Show more cafes initially (12 instead of 8)
+        const visibleCafes = this.cafes.slice(0, 12);
         
         console.log('Rendering cafes:', visibleCafes.length);
         
@@ -1215,12 +1215,12 @@ class CaffyRuteGoogleMaps {
         // Update cafe count
         const cafeCount = document.querySelector('.cafe-count');
         if (cafeCount) {
-            cafeCount.textContent = `${this.cafes.length} cafes found`;
+            cafeCount.textContent = `${this.cafes.length} cafés found`;
         }
         
         // Load remaining cafes progressively if there are more
-        if (this.cafes.length > 8) {
-            setTimeout(() => this.loadRemainingCafes(8), 200);
+        if (this.cafes.length > 12) {
+            setTimeout(() => this.loadRemainingCafes(12), 200);
         }
     }
 
@@ -1275,6 +1275,7 @@ class CaffyRuteGoogleMaps {
                 <div class="cafe-image">
                     <img src="${imageUrl}" alt="${cafe.name}" loading="lazy">
                     ${fallbackBadge}
+                    <div class="price-overlay">${priceSymbols}</div>
                 </div>
                 <div class="cafe-details">
                     <h3>${cafe.name}</h3>
@@ -1284,16 +1285,20 @@ class CaffyRuteGoogleMaps {
                     </div>
                     <div class="cafe-meta">
                         <span class="distance"><i class="fas fa-map-marker-alt"></i> ${(cafe.distance || 0).toFixed(1)} km</span>
-                        <span class="price"><i class="fas fa-dollar-sign"></i> ${priceSymbols}</span>
                         <span class="status ${statusClass}"><i class="fas fa-clock"></i> ${statusText}</span>
+                        ${cafe.address ? `<span class="address-snippet"><i class="fas fa-location-dot"></i> ${cafe.address.split(',')[0]}</span>` : ''}
                     </div>
                 </div>
                 <div class="cafe-actions">
                     <button class="heart-btn" onclick="toggleFavorite(this, '${cafe.id || `unknown-${index}`}')">
                         <i class="far fa-heart"></i>
                     </button>
-                    <button class="btn-secondary" onclick="window.showCafeDetails('${cafe.id}')">Details</button>
-                    <button class="btn-primary" onclick="window.getDirections(${cafe.location.lat}, ${cafe.location.lng}, '${cafe.name}')">Directions</button>
+                    <button class="view-details-btn" onclick="window.showCafeDetails('${cafe.id}')">
+                        <i class="fas fa-info-circle"></i> Details
+                    </button>
+                    <button class="btn-primary directions-btn" onclick="window.getDirections(${cafe.location.lat}, ${cafe.location.lng}, '${cafe.name}')">
+                        <i class="fas fa-directions"></i> Go
+                    </button>
                 </div>
             `;
     
