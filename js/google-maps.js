@@ -418,7 +418,10 @@ class CaffyRuteGoogleMaps {
             
             // Automatically search for nearby cafes on page load
             console.log('Starting automatic search for nearby cafes...');
-            this.searchNearbyCafes();
+            // Force a smaller initial radius to get faster results
+            setTimeout(() => {
+                this.searchNearbyCafes(2000);  // 2km initial radius for faster results
+            }, 100);
             
             console.log('Google Maps initialization completed');
             
@@ -474,6 +477,11 @@ class CaffyRuteGoogleMaps {
             return;
         }
         
+        // Clear any existing timeout to ensure multiple searches don't overlap
+        if (this.searchTimeout) {
+            clearTimeout(this.searchTimeout);
+        }
+        
         // Update loading message with radius information
         const loadingElement = document.getElementById('loading-cafes');
         if (loadingElement) {
@@ -512,14 +520,14 @@ class CaffyRuteGoogleMaps {
         const request = {
             location: this.userLocation,
             radius: radius,
-            type: ['restaurant', 'cafe', 'bar'], // Expanded types to get more results
-            keyword: 'coffee cafe',
+            type: ['cafe', 'restaurant', 'bar', 'bakery', 'food'], // Expanded types to get more results
+            keyword: 'coffee cafe espresso',
             fields: [
                 'place_id', 'name', 'geometry', 'rating', 'user_ratings_total',
                 'price_level', 'photos', 'opening_hours', 'formatted_address',
                 'types', 'business_status', 'vicinity'
             ],
-            rankBy: radius > 20000 ? google.maps.places.RankBy.DISTANCE : undefined // Use distance ranking for very large areas
+            rankBy: google.maps.places.RankBy.PROMINENCE // Prioritize prominence over distance for more relevant results
         };
 
         console.log('Making Places API request:', request);
@@ -539,7 +547,7 @@ class CaffyRuteGoogleMaps {
                         } 
                         // Then try increasing radius if we haven't gone too far
                         else if (radius < 20000) { // Max 20 km radius
-                            const newRadius = radius * 2; // Double the radius
+                            const newRadius = radius * 1.5; // Increase the radius by 50%
                             console.log(`Increasing search radius to ${newRadius}m`);
                             this.searchNearbyCafes(newRadius, attemptCount + 1);
                         } else {
@@ -793,6 +801,12 @@ class CaffyRuteGoogleMaps {
             return;
         }
         
+        // Display results header right away
+        const sectionHeader = document.querySelector('.section-header h2');
+        if (sectionHeader) {
+            sectionHeader.textContent = 'Cafés Near You';
+        }
+        
         // Limit results for processing (show top 30 results instead of 15)
         const limitedResults = results.slice(0, 30);
         console.log('Processing limited results:', limitedResults.length);
@@ -1035,10 +1049,30 @@ class CaffyRuteGoogleMaps {
     // Optimized sorting by different criteria
     sortCafesByDistance() {
         console.log('Sorting cafés by distance...');
+        if (!this.cafes || this.cafes.length === 0) {
+            console.log('No cafes to sort by distance');
+            return;
+        }
+        
+        // Make sure all cafes have a distance calculated
+        for (const cafe of this.cafes) {
+            if (typeof cafe.distance !== 'number' || isNaN(cafe.distance)) {
+                cafe.distance = this.calculateDistance(
+                    this.userLocation.lat, 
+                    this.userLocation.lng,
+                    cafe.location.lat,
+                    cafe.location.lng
+                );
+            }
+        }
+        
+        // Sort by distance
         this.cafes.sort((a, b) => {
             // Primary sort by distance
             return (a.distance || 0) - (b.distance || 0);
         });
+        
+        console.log('Sorted cafes by distance:', this.cafes.map(c => `${c.name}: ${c.distance.toFixed(2)}km`).slice(0, 5));
     }
     
     // Sort cafes by specified criteria
@@ -1211,6 +1245,9 @@ class CaffyRuteGoogleMaps {
             console.error('Cafe list element not found');
             return;
         }
+        
+        // Hide loading indicator
+        this.hideLoading();
 
         // Handle empty results
         if (!this.cafes || this.cafes.length === 0) {
