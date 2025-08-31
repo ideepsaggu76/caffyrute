@@ -9,6 +9,294 @@ class CaffyRuteGoogleMaps {
         this.userLocation = null;
         this.markers = [];
         this.cafes = [];
+        this.currentSearchLocation = null;
+        this.autocompleteService = null;
+        this.placesService = null;
+        
+        // Initialize location search functionality when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => this.initLocationSearch());
+        } else {
+            this.initLocationSearch();
+        }
+    }
+    
+    // Initialize location search with autocomplete
+    initLocationSearch() {
+        const locationInput = document.getElementById('location-input');
+        const suggestionsContainer = document.getElementById('location-suggestions');
+        
+        if (!locationInput || !suggestionsContainer) return;
+        
+        let searchTimeout;
+        let selectedIndex = -1;
+        
+        // Input event handler with debouncing
+        locationInput.addEventListener('input', (e) => {
+            const query = e.target.value.trim();
+            clearTimeout(searchTimeout);
+            
+            if (query.length < 2) {
+                this.hideSuggestions();
+                return;
+            }
+            
+            searchTimeout = setTimeout(() => {
+                this.searchLocationSuggestions(query, suggestionsContainer);
+            }, 300);
+        });
+        
+        // Keyboard navigation
+        locationInput.addEventListener('keydown', (e) => {
+            const suggestions = suggestionsContainer.querySelectorAll('.suggestion-item:not(.current-location-btn)');
+            
+            switch(e.key) {
+                case 'ArrowDown':
+                    e.preventDefault();
+                    selectedIndex = Math.min(selectedIndex + 1, suggestions.length - 1);
+                    this.highlightSuggestion(suggestions, selectedIndex);
+                    break;
+                case 'ArrowUp':
+                    e.preventDefault();
+                    selectedIndex = Math.max(selectedIndex - 1, -1);
+                    this.highlightSuggestion(suggestions, selectedIndex);
+                    break;
+                case 'Enter':
+                    e.preventDefault();
+                    if (selectedIndex >= 0 && suggestions[selectedIndex]) {
+                        this.selectLocation(suggestions[selectedIndex]);
+                    }
+                    break;
+                case 'Escape':
+                    this.hideSuggestions();
+                    locationInput.blur();
+                    break;
+            }
+        });
+        
+        // Hide suggestions when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!locationInput.contains(e.target) && !suggestionsContainer.contains(e.target)) {
+                this.hideSuggestions();
+            }
+        });
+        
+        // Focus event
+        locationInput.addEventListener('focus', () => {
+            if (locationInput.value.trim().length >= 2) {
+                this.searchLocationSuggestions(locationInput.value.trim(), suggestionsContainer);
+            }
+        });
+    }
+    
+    // Search for location suggestions
+    searchLocationSuggestions(query, container) {
+        // Initialize Google Places Autocomplete Service if available
+        if (window.google && window.google.maps && window.google.maps.places) {
+            if (!this.autocompleteService) {
+                this.autocompleteService = new google.maps.places.AutocompleteService();
+                this.placesService = new google.maps.places.PlacesService(document.createElement('div'));
+            }
+            
+            const request = {
+                input: query,
+                types: ['geocode', 'establishment'],
+                componentRestrictions: { country: 'in' }, // Focus on India
+            };
+            
+            this.autocompleteService.getPlacePredictions(request, (predictions, status) => {
+                if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
+                    this.displayLocationSuggestions(predictions, container);
+                } else {
+                    this.showBasicSuggestions(query, container);
+                }
+            });
+        } else {
+            this.showBasicSuggestions(query, container);
+        }
+    }
+    
+    // Display location suggestions
+    displayLocationSuggestions(predictions, container) {
+        container.innerHTML = '';
+        
+        // Add current location option first
+        this.addCurrentLocationOption(container);
+        
+        predictions.slice(0, 5).forEach((prediction, index) => {
+            const suggestionItem = document.createElement('div');
+            suggestionItem.className = 'suggestion-item';
+            suggestionItem.setAttribute('data-place-id', prediction.place_id);
+            
+            const mainText = prediction.structured_formatting.main_text;
+            const secondaryText = prediction.structured_formatting.secondary_text || '';
+            
+            suggestionItem.innerHTML = `
+                <i class="fas fa-map-marker-alt suggestion-icon"></i>
+                <div class="suggestion-content">
+                    <div class="suggestion-main">${mainText}</div>
+                    <div class="suggestion-secondary">${secondaryText}</div>
+                </div>
+            `;
+            
+            suggestionItem.addEventListener('click', () => {
+                this.selectLocation(suggestionItem);
+            });
+            
+            container.appendChild(suggestionItem);
+        });
+        
+        this.showSuggestions(container);
+    }
+    
+    // Show basic suggestions when Google Places API is not available
+    showBasicSuggestions(query, container) {
+        container.innerHTML = '';
+        
+        // Add current location option
+        this.addCurrentLocationOption(container);
+        
+        const suggestionItem = document.createElement('div');
+        suggestionItem.className = 'suggestion-item';
+        suggestionItem.setAttribute('data-query', query);
+        
+        suggestionItem.innerHTML = `
+            <i class="fas fa-search suggestion-icon"></i>
+            <div class="suggestion-content">
+                <div class="suggestion-main">${query}</div>
+                <div class="suggestion-secondary">Search for this location</div>
+            </div>
+        `;
+        
+        suggestionItem.addEventListener('click', () => {
+            this.selectLocation(suggestionItem);
+        });
+        
+        container.appendChild(suggestionItem);
+        this.showSuggestions(container);
+    }
+    
+    // Add current location option
+    addCurrentLocationOption(container) {
+        const currentLocationBtn = document.createElement('button');
+        currentLocationBtn.className = 'current-location-btn';
+        currentLocationBtn.innerHTML = `
+            <i class="fas fa-crosshairs"></i>
+            <span>Use Current Location</span>
+        `;
+        
+        currentLocationBtn.addEventListener('click', () => {
+            this.useCurrentLocation();
+        });
+        
+        container.appendChild(currentLocationBtn);
+    }
+    
+    // Select a location from suggestions
+    selectLocation(suggestionElement) {
+        const locationInput = document.getElementById('location-input');
+        const placeId = suggestionElement.getAttribute('data-place-id');
+        const query = suggestionElement.getAttribute('data-query');
+        
+        if (placeId && this.placesService) {
+            // Get place details using place ID
+            this.placesService.getDetails({
+                placeId: placeId,
+                fields: ['geometry', 'formatted_address', 'name']
+            }, (place, status) => {
+                if (status === google.maps.places.PlacesServiceStatus.OK) {
+                    const location = place.geometry.location;
+                    this.setSearchLocation(location.lat(), location.lng(), place.formatted_address);
+                    locationInput.value = place.formatted_address;
+                }
+            });
+        } else if (query) {
+            // Basic search for the query
+            this.searchLocationByName(query);
+            locationInput.value = query;
+        }
+        
+        this.hideSuggestions();
+    }
+    
+    // Use current location
+    useCurrentLocation() {
+        if (navigator.geolocation) {
+            const locationInput = document.getElementById('location-input');
+            locationInput.value = 'Getting current location...';
+            
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    this.setSearchLocation(lat, lng, 'Current Location');
+                    locationInput.value = 'Current Location';
+                    this.hideSuggestions();
+                },
+                (error) => {
+                    locationInput.value = '';
+                    this.showError('Unable to get current location. Please enter manually.');
+                }
+            );
+        } else {
+            this.showError('Geolocation is not supported by this browser.');
+        }
+    }
+    
+    // Set search location and update cafes
+    setSearchLocation(lat, lng, address) {
+        this.currentSearchLocation = { lat, lng, address };
+        this.userLocation = { lat, lng };
+        
+        // Update map center if map exists
+        if (this.map) {
+            this.map.setCenter({ lat, lng });
+        }
+        
+        // Search for cafes at new location
+        this.searchNearbyCafes();
+    }
+    
+    // Search location by name using geocoding
+    searchLocationByName(locationName) {
+        if (!window.google || !window.google.maps) {
+            this.showError('Google Maps is not loaded. Please check your connection.');
+            return;
+        }
+        
+        const geocoder = new google.maps.Geocoder();
+        geocoder.geocode({ address: locationName }, (results, status) => {
+            if (status === 'OK' && results[0]) {
+                const location = results[0].geometry.location;
+                this.setSearchLocation(
+                    location.lat(), 
+                    location.lng(), 
+                    results[0].formatted_address
+                );
+            } else {
+                this.showError('Location not found. Please try a different search term.');
+            }
+        });
+    }
+    
+    // Highlight suggestion for keyboard navigation
+    highlightSuggestion(suggestions, index) {
+        suggestions.forEach((item, i) => {
+            item.classList.toggle('highlighted', i === index);
+        });
+    }
+    
+    // Show suggestions dropdown
+    showSuggestions(container) {
+        container.classList.add('active');
+    }
+    
+    // Hide suggestions dropdown
+    hideSuggestions() {
+        const container = document.getElementById('location-suggestions');
+        if (container) {
+            container.classList.remove('active');
+        }
     }
 
     // Initialize Google Maps
@@ -69,122 +357,191 @@ class CaffyRuteGoogleMaps {
     }
 
     // Search for nearby cafes using Google Places API with enhanced filtering
-    searchNearbyCafes(radius = 5000) {
+    searchNearbyCafes(radius = 3000) { // Reduced default radius for faster results
         const request = {
             location: this.userLocation,
             radius: radius,
-            type: ['cafe', 'bakery', 'restaurant'],
-            keyword: 'coffee espresso latte cappuccino tea',
+            type: ['cafe'], // Start with just cafes for speed
+            keyword: 'coffee',
             fields: [
                 'place_id', 'name', 'geometry', 'rating', 'user_ratings_total',
                 'price_level', 'photos', 'opening_hours', 'formatted_address',
-                'types', 'website', 'formatted_phone_number', 'reviews',
-                'business_status', 'international_phone_number', 'url'
+                'types', 'business_status', 'vicinity'
             ]
         };
 
         this.service.nearbySearch(request, (results, status) => {
             if (status === google.maps.places.PlacesServiceStatus.OK) {
-                // Filter out cyber cafes and non-coffee places
-                const filteredResults = this.filterValidCafes(results);
+                // Quick filter and process immediately
+                const filteredResults = this.quickFilterCafes(results);
                 this.processCafeResults(filteredResults);
             } else {
                 console.error('Places search failed:', status);
                 this.showError('Unable to find nearby cafes. Please try again.');
+                this.hideLoading();
             }
         });
     }
 
-    // Filter out cyber cafes and invalid establishments
-    filterValidCafes(results) {
+    // Quick filter for immediate results
+    quickFilterCafes(results) {
         return results.filter(place => {
             const name = place.name.toLowerCase();
-            const types = place.types || [];
             
-            // Exclude cyber cafes, internet cafes, gaming centers
+            // Quick exclusion of obvious non-cafes
             const excludeKeywords = [
-                'cyber', 'internet', 'gaming', 'computer', 'pc', 'laptop',
-                'net cafe', 'cyber cafe', 'game', 'xbox', 'playstation',
-                'computers', 'wifi center', 'browsing', 'typing', 'xerox',
-                'photocopy', 'printing', 'scan', 'email', 'net center'
+                'cyber', 'internet', 'gaming', 'computer', 'pc',
+                'xerox', 'photocopy', 'printing'
             ];
             
-            const hasExcludedKeyword = excludeKeywords.some(keyword => 
-                name.includes(keyword)
-            );
+            const hasExcluded = excludeKeywords.some(keyword => name.includes(keyword));
             
-            // Exclude non-food business types
-            const excludedTypes = [
-                'electronics_store', 'computer_repair', 'internet_cafe',
-                'library', 'university', 'school', 'bank', 'atm'
-            ];
+            // Must have coffee-related terms or be a cafe type
+            const coffeeKeywords = ['coffee', 'cafe', 'espresso', 'bean', 'brew'];
+            const hasCoffee = coffeeKeywords.some(keyword => name.includes(keyword));
+            const isCafe = place.types && place.types.includes('cafe');
             
-            const hasExcludedType = excludedTypes.some(type => 
-                types.includes(type)
-            );
-            
-            // Must have food/beverage related types
-            const validTypes = [
-                'cafe', 'coffee_shop', 'bakery', 'restaurant', 'food',
-                'meal_takeaway', 'meal_delivery'
-            ];
-            
-            const hasValidType = validTypes.some(type => 
-                types.includes(type)
-            );
-            
-            // Additional check for coffee-related keywords in name
-            const coffeeKeywords = ['coffee', 'cafe', 'espresso', 'latte', 'bean', 'brew', 'roast'];
-            const hasCoffeeKeyword = coffeeKeywords.some(keyword => 
-                name.includes(keyword)
-            );
-            
-            return !hasExcludedKeyword && !hasExcludedType && (hasValidType || hasCoffeeKeyword);
-        });
+            return !hasExcluded && (hasCoffee || isCafe);
+        }).slice(0, 20); // Limit to 20 for faster processing
     }
 
-    // Process cafe search results with enhanced details
+    // Process cafe search results with optimized performance
     async processCafeResults(results) {
         this.cafes = [];
-        const detailPromises = [];
-
-        // Get detailed information for each cafe
-        for (let i = 0; i < Math.min(results.length, 25); i++) {
-            const place = results[i];
-            detailPromises.push(this.getPlaceDetails(place.place_id));
+        
+        // Show loading state immediately
+        this.showLoading();
+        
+        // Limit results for faster processing (show top 15 closest)
+        const limitedResults = results.slice(0, 15);
+        
+        // Process cafes in batches for better performance
+        const batchSize = 5;
+        const batches = [];
+        
+        for (let i = 0; i < limitedResults.length; i += batchSize) {
+            batches.push(limitedResults.slice(i, i + batchSize));
         }
-
+        
         try {
-            const detailedResults = await Promise.all(detailPromises);
-            this.cafes = detailedResults.filter(cafe => cafe !== null);
+            // Process first batch immediately for quick display
+            const firstBatch = await Promise.all(
+                batches[0].map(place => this.getPlaceDetailsQuick(place))
+            );
             
-            // Calculate distances for all cafes
-            this.cafes.forEach(cafe => {
-                cafe.distance = this.calculateDistance(
-                    this.userLocation.lat, this.userLocation.lng,
-                    cafe.geometry.location.lat(), cafe.geometry.location.lng()
-                );
-            });
+            this.cafes = firstBatch.filter(cafe => cafe !== null);
+            this.sortCafesByDistance();
             
-            // Sort by distance first (closest first), then by rating
-            this.cafes.sort((a, b) => {
-                // Primary sort by distance
-                const distanceDiff = a.distance - b.distance;
-                if (Math.abs(distanceDiff) > 0.1) { // Only if distance difference is significant
-                    return distanceDiff;
-                }
-                // Secondary sort by rating if distances are similar
-                return (b.rating || 0) - (a.rating || 0);
-            });
-
+            // Display first results immediately
             this.displayCafes();
             this.addMapMarkers();
+            this.hideLoading();
+            
+            // Process remaining batches in background
+            if (batches.length > 1) {
+                this.processRemainingBatches(batches.slice(1));
+            }
+            
         } catch (error) {
             console.error('Error processing cafe results:', error);
             this.showError('Error loading cafe details. Please try again.');
-        } finally {
             this.hideLoading();
         }
+    }
+    
+    // Process remaining batches in background
+    async processRemainingBatches(remainingBatches) {
+        for (const batch of remainingBatches) {
+            try {
+                const batchResults = await Promise.all(
+                    batch.map(place => this.getPlaceDetailsQuick(place))
+                );
+                
+                const validCafes = batchResults.filter(cafe => cafe !== null);
+                this.cafes.push(...validCafes);
+                this.sortCafesByDistance();
+                
+                // Update display incrementally
+                this.displayCafes();
+                this.addMapMarkers();
+                
+                // Small delay to prevent blocking UI
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+            } catch (error) {
+                console.error('Error processing batch:', error);
+            }
+        }
+    }
+    
+    // Quick place details with essential info only
+    getPlaceDetailsQuick(place) {
+        return new Promise((resolve) => {
+            // Use basic place data first for immediate display
+            const basicCafe = {
+                id: place.place_id,
+                name: place.name,
+                rating: place.rating || 0,
+                reviewCount: place.user_ratings_total || 0,
+                priceLevel: place.price_level || 2,
+                address: place.vicinity || place.formatted_address || 'Address not available',
+                location: {
+                    lat: place.geometry.location.lat(),
+                    lng: place.geometry.location.lng()
+                },
+                distance: this.calculateDistance(
+                    this.userLocation.lat, this.userLocation.lng,
+                    place.geometry.location.lat(), place.geometry.location.lng()
+                ),
+                isOpen: place.opening_hours ? place.opening_hours.isOpen() : null,
+                photos: place.photos ? [{
+                    url: place.photos[0].getUrl({ maxWidth: 300, maxHeight: 200 })
+                }] : [],
+                businessStatus: place.business_status,
+                types: place.types || [],
+                features: this.extractBasicFeatures(place),
+                // Placeholder for detailed data
+                detailsLoaded: false
+            };
+            
+            resolve(basicCafe);
+        });
+    }
+    
+    // Extract basic features quickly
+    extractBasicFeatures(place) {
+        const features = [];
+        const types = place.types || [];
+        
+        // Quick feature detection based on place types
+        if (types.includes('wifi')) {
+            features.push({ icon: 'fas fa-wifi', text: 'WiFi' });
+        }
+        if (types.includes('wheelchair_accessible_entrance')) {
+            features.push({ icon: 'fas fa-wheelchair', text: 'Accessible' });
+        }
+        if (place.price_level !== undefined) {
+            const priceText = ['Free', '$', '$$', '$$$', '$$$$'][place.price_level] || '$$';
+            features.push({ icon: 'fas fa-dollar-sign', text: priceText });
+        }
+        if (types.includes('meal_takeaway')) {
+            features.push({ icon: 'fas fa-shopping-bag', text: 'Takeaway' });
+        }
+        
+        return features;
+    }
+    
+    // Optimized sorting
+    sortCafesByDistance() {
+        this.cafes.sort((a, b) => {
+            // Primary sort by distance
+            const distanceDiff = a.distance - b.distance;
+            if (Math.abs(distanceDiff) > 0.1) {
+                return distanceDiff;
+            }
+            // Secondary sort by rating
+            return (b.rating || 0) - (a.rating || 0);
+        });
     }
 
     // Get detailed place information
@@ -312,23 +669,165 @@ class CaffyRuteGoogleMaps {
         return degrees * (Math.PI / 180);
     }
 
-    // Display cafes in the UI
+    // Optimized display cafes in the UI
     displayCafes() {
         const cafeList = document.querySelector('.cafe-list');
         if (!cafeList) return;
 
-        cafeList.innerHTML = '';
+        // Clear loading placeholder if exists
+        const loadingPlaceholder = cafeList.querySelector('.loading-placeholder');
+        if (loadingPlaceholder) {
+            loadingPlaceholder.remove();
+        }
 
-        this.cafes.forEach((cafe, index) => {
-            const cafeElement = this.createCafeElement(cafe, index);
-            cafeList.appendChild(cafeElement);
+        // Use document fragment for better performance
+        const fragment = document.createDocumentFragment();
+        
+        // Limit initial render to first 8 cafes for speed
+        const visibleCafes = this.cafes.slice(0, 8);
+        
+        visibleCafes.forEach((cafe, index) => {
+            const cafeElement = this.createOptimizedCafeElement(cafe, index);
+            fragment.appendChild(cafeElement);
         });
+
+        // Clear and append efficiently
+        cafeList.innerHTML = '';
+        cafeList.appendChild(fragment);
 
         // Update cafe count
         const cafeCount = document.querySelector('.cafe-count');
         if (cafeCount) {
             cafeCount.textContent = `${this.cafes.length} cafes found`;
         }
+        
+        // Load remaining cafes progressively if there are more
+        if (this.cafes.length > 8) {
+            setTimeout(() => this.loadRemainingCafes(8), 200);
+        }
+    }
+
+    // Load remaining cafes progressively
+    loadRemainingCafes(startIndex) {
+        const cafeList = document.querySelector('.cafe-list');
+        if (!cafeList) return;
+
+        const remainingCafes = this.cafes.slice(startIndex);
+        const fragment = document.createDocumentFragment();
+        
+        remainingCafes.forEach((cafe, index) => {
+            const cafeElement = this.createOptimizedCafeElement(cafe, startIndex + index);
+            fragment.appendChild(cafeElement);
+        });
+
+        cafeList.appendChild(fragment);
+    }
+
+    // Create optimized cafe element for faster rendering
+    createOptimizedCafeElement(cafe, index) {
+        const cafeDiv = document.createElement('div');
+        cafeDiv.className = 'cafe-item';
+        cafeDiv.setAttribute('data-cafe-id', cafe.id);
+        
+        // Optimized image URL for faster loading
+        const imageUrl = cafe.photos.length > 0 
+            ? cafe.photos[0].url.replace('400', '200').replace('300', '150')
+            : 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=200&h=150&fit=crop&q=80';
+        
+        const stars = this.generateStars(cafe.rating);
+        const priceSymbols = '$'.repeat(Math.max(1, cafe.priceLevel || 2));
+        
+        const statusClass = cafe.isOpen === true ? 'open' : (cafe.isOpen === false ? 'closed' : 'unknown');
+        const statusText = cafe.isOpen === true ? 'Open' : (cafe.isOpen === false ? 'Closed' : 'Unknown');
+
+        // Simplified, faster HTML structure
+        cafeDiv.innerHTML = `
+            <div class="cafe-image">
+                <img src="${imageUrl}" alt="${cafe.name}" loading="lazy">
+            </div>
+            <div class="cafe-details">
+                <h3>${cafe.name}</h3>
+                <div class="cafe-rating">
+                    <div class="stars">${stars}</div>
+                    <span class="rating-text">${cafe.rating.toFixed(1)} (${cafe.reviewCount})</span>
+                </div>
+                <div class="cafe-meta">
+                    <span class="distance"><i class="fas fa-map-marker-alt"></i> ${cafe.distance.toFixed(1)} km</span>
+                    <span class="price"><i class="fas fa-dollar-sign"></i> ${priceSymbols}</span>
+                    <span class="status ${statusClass}"><i class="fas fa-clock"></i> ${statusText}</span>
+                </div>
+            </div>
+            <div class="cafe-actions">
+                <button class="heart-btn" onclick="toggleFavorite(this, '${cafe.id}')">
+                    <i class="far fa-heart"></i>
+                </button>
+                <button class="btn-secondary" onclick="window.caffyRuteApp.showQuickDetails('${cafe.id}')">Details</button>
+                <button class="btn-primary" onclick="window.caffyRuteApp.getDirections(${cafe.location.lat}, ${cafe.location.lng})">Directions</button>
+            </div>
+        `;
+
+        return cafeDiv;
+    }
+    
+    // Quick details modal for faster interaction
+    showQuickDetails(cafeId) {
+        const cafe = this.cafes.find(c => c.id === cafeId);
+        if (!cafe) return;
+        
+        // Show quick modal immediately
+        this.showQuickModal(cafe);
+        
+        // Load detailed info in background if not already loaded
+        if (!cafe.detailsLoaded) {
+            this.loadDetailedInfo(cafe);
+        }
+    }
+    
+    // Show quick modal with basic info
+    showQuickModal(cafe) {
+        const existingModal = document.getElementById('quick-cafe-modal');
+        if (existingModal) existingModal.remove();
+        
+        const modal = document.createElement('div');
+        modal.id = 'quick-cafe-modal';
+        modal.className = 'cafe-modal quick-modal';
+        
+        const imageUrl = cafe.photos.length > 0 ? cafe.photos[0].url : 
+            'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=400&h=250&fit=crop';
+        
+        modal.innerHTML = `
+            <div class="modal-overlay" onclick="this.parentElement.remove()"></div>
+            <div class="modal-content quick-content">
+                <div class="modal-header">
+                    <h2>${cafe.name}</h2>
+                    <button class="modal-close" onclick="this.closest('.cafe-modal').remove()">×</button>
+                </div>
+                <div class="modal-body">
+                    <img src="${imageUrl}" alt="${cafe.name}" class="quick-image">
+                    <div class="quick-info">
+                        <div class="rating">${this.generateStars(cafe.rating)} ${cafe.rating.toFixed(1)}</div>
+                        <p><i class="fas fa-map-marker-alt"></i> ${cafe.distance.toFixed(1)} km away</p>
+                        <p><i class="fas fa-dollar-sign"></i> ${this.getPriceLevel(cafe.priceLevel)}</p>
+                        <p><i class="fas fa-clock"></i> ${cafe.isOpen === true ? 'Open' : cafe.isOpen === false ? 'Closed' : 'Hours unknown'}</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-primary" onclick="window.caffyRuteApp.getDirections(${cafe.location.lat}, ${cafe.location.lng})">
+                        Get Directions
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        document.body.style.overflow = 'hidden';
+    }
+    
+    // Get price level display
+    getPriceLevel(level) {
+        const levels = ['Free', '$', '$$', '$$$', '$$$$'];
+        return levels[level] || '$$';
+    }
     }
 
     // Create cafe element HTML

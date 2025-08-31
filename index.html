@@ -66,10 +66,27 @@
             <h1>Find Your Perfect Café</h1>
             <p>Discover amazing coffee experiences near you with real-time location updates</p>
             <div class="search-container">
-                <input type="text" placeholder="Search for cafés near you..." class="search-input">
-                <button class="search-btn">
-                    <i class="fas fa-search"></i>
-                </button>
+                <div class="location-search-wrapper">
+                    <input type="text" 
+                           id="location-input" 
+                           placeholder="Enter your location..." 
+                           class="location-input"
+                           autocomplete="off">
+                    <i class="fas fa-map-marker-alt location-icon"></i>
+                    <div class="location-suggestions" id="location-suggestions"></div>
+                </div>
+                <div class="search-divider">
+                    <span>or</span>
+                </div>
+                <div class="cafe-search-wrapper">
+                    <input type="text" 
+                           id="cafe-search" 
+                           placeholder="Search cafés..." 
+                           class="search-input">
+                    <button class="search-btn" onclick="window.caffyRuteApp?.searchCafes(document.getElementById('cafe-search').value)">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
             </div>
             <div class="filter-buttons">
                 <button class="filter-btn active">All</button>

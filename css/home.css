@@ -44,12 +44,62 @@
 
 .search-container {
     display: flex;
-    max-width: 600px;
+    flex-direction: column;
+    max-width: 700px;
     margin: 0 auto 2rem;
     background: white;
-    border-radius: 50px;
-    overflow: hidden;
+    border-radius: 20px;
+    overflow: visible;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    gap: 0;
+}
+
+/* Location Search Wrapper */
+.location-search-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+}
+
+.location-input {
+    flex: 1;
+    padding: 1rem 1.5rem 1rem 3rem;
+    border: none;
+    font-size: 1rem;
+    outline: none;
+    color: var(--text-dark);
+    border-radius: 20px 20px 0 0;
+}
+
+.location-input::placeholder {
+    color: var(--text-light);
+}
+
+.location-icon {
+    position: absolute;
+    left: 1.2rem;
+    color: var(--gold-accent);
+    font-size: 1rem;
+    z-index: 2;
+}
+
+/* Search Divider */
+.search-divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
+    background: #f8f9fa;
+    font-size: 0.8rem;
+    color: var(--text-medium);
+    font-weight: 500;
+}
+
+/* Cafe Search Wrapper */
+.cafe-search-wrapper {
+    display: flex;
+    align-items: center;
 }
 
 .search-input {
@@ -59,6 +109,7 @@
     font-size: 1rem;
     outline: none;
     color: var(--text-dark);
+    border-radius: 0 0 0 20px;
 }
 
 .search-input::placeholder {
@@ -72,10 +123,145 @@
     color: white;
     cursor: pointer;
     transition: background 0.3s ease;
+    border-radius: 0 0 20px 0;
 }
 
 .search-btn:hover {
     background: #B8941F;
+}
+
+/* Location Suggestions */
+.location-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border-radius: 0 0 15px 15px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+}
+
+.location-suggestions.active {
+    display: block;
+}
+
+.suggestion-item {
+    padding: 1rem 1.5rem;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+    transition: background 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+}
+
+.suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.suggestion-item:hover {
+    background: #f8f9fa;
+}
+
+.suggestion-item.highlighted {
+    background: #e3f2fd;
+}
+
+.suggestion-icon {
+    color: var(--gold-accent);
+    font-size: 0.9rem;
+    width: 16px;
+}
+
+.suggestion-content {
+    flex: 1;
+}
+
+.suggestion-main {
+    font-weight: 600;
+    color: var(--text-dark);
+    font-size: 0.95rem;
+    margin-bottom: 0.2rem;
+}
+
+.suggestion-secondary {
+    color: var(--text-medium);
+    font-size: 0.85rem;
+}
+
+/* Current Location Button */
+.current-location-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 1rem 1.5rem;
+    background: #e8f5e8;
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    width: 100%;
+    text-align: left;
+    color: #2e7d32;
+    font-weight: 600;
+    border-bottom: 1px solid #ddd;
+}
+
+.current-location-btn:hover {
+    background: #d4edda;
+}
+
+.current-location-btn .fas {
+    color: #2e7d32;
+}
+
+/* Loading state for location input */
+.location-input.loading {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading-shimmer 1.5s infinite;
+}
+
+@keyframes loading-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* Enhanced suggestion hover effects */
+.suggestion-item {
+    position: relative;
+    overflow: hidden;
+}
+
+.suggestion-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(184, 148, 11, 0.1), transparent);
+    transition: left 0.5s ease;
+}
+
+.suggestion-item:hover::before {
+    left: 100%;
+}
+
+/* Improved mobile touch targets */
+@media (max-width: 768px) {
+    .suggestion-item,
+    .current-location-btn {
+        min-height: 50px;
+        touch-action: manipulation;
+    }
+    
+    .location-icon {
+        font-size: 1.1rem;
+    }
 }
 
 .filter-buttons {
@@ -343,25 +529,49 @@
     }
     
     .search-container {
-        flex-direction: column;
         border-radius: 15px;
         margin-bottom: 2rem;
-        max-width: 400px;
+        max-width: 95%;
         margin-left: auto;
         margin-right: auto;
     }
     
+    .location-input,
     .search-input {
-        border-radius: 15px 15px 0 0;
         padding: 1rem 1.5rem;
         font-size: 1rem;
-        border-bottom: 1px solid var(--cream);
+    }
+    
+    .location-input {
+        border-radius: 15px 15px 0 0;
+        padding-left: 3rem;
+    }
+    
+    .search-input {
+        border-radius: 0;
     }
     
     .search-btn {
         border-radius: 0 0 15px 15px;
         padding: 1rem;
         font-size: 1.1rem;
+    }
+    
+    .location-suggestions {
+        border-radius: 0 0 15px 15px;
+        max-height: 250px;
+    }
+    
+    .suggestion-item {
+        padding: 0.8rem 1rem;
+    }
+    
+    .suggestion-main {
+        font-size: 0.9rem;
+    }
+    
+    .suggestion-secondary {
+        font-size: 0.8rem;
     }
     
     .filter-buttons {
