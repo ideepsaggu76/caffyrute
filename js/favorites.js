@@ -80,31 +80,98 @@ const favoriteManager = new FavoriteManager();
 
 // Toggle favorite function
 function toggleFavorite(button, cafeId) {
-    const heartIcon = button.querySelector('i');
-    const cafeItem = button.closest('.cafe-item');
+    if (!button || !cafeId) {
+        console.error('Missing button or cafeId for toggleFavorite:', button, cafeId);
+        return;
+    }
+
+    // Find the cafe data
+    let cafeData = null;
     
-    // Extract cafe data
-    const cafeData = {
-        name: cafeItem.querySelector('h3').textContent,
-        image: cafeItem.querySelector('.cafe-image img').src,
-        rating: cafeItem.querySelector('.rating-text').textContent,
-        description: cafeItem.querySelector('.cafe-description').textContent,
-        features: Array.from(cafeItem.querySelectorAll('.feature')).map(f => f.textContent.trim()),
-        distance: cafeItem.querySelector('.distance').textContent,
-        status: cafeItem.querySelector('.status').textContent
-    };
+    // Get cafe from global array if possible
+    if (window.caffyRuteApp && window.caffyRuteApp.cafes) {
+        const cafe = window.caffyRuteApp.cafes.find(c => c.id === cafeId);
+        if (cafe) {
+            cafeData = {
+                id: cafe.id,
+                name: cafe.name,
+                image: cafe.photos && cafe.photos.length > 0 ? cafe.photos[0].url : '',
+                rating: cafe.rating || 0,
+                reviewCount: cafe.reviewCount || 0,
+                address: cafe.address || '',
+                distance: cafe.distance || 0,
+                status: cafe.isOpen === true ? 'Open' : (cafe.isOpen === false ? 'Closed' : 'Hours unknown')
+            };
+        }
+    }
+    
+    // If we couldn't get the cafe data from the global array, try to extract it from the DOM
+    if (!cafeData) {
+        try {
+            const cafeItem = button.closest('.cafe-item') || button.closest('.cafe-details-page');
+            
+            if (cafeItem) {
+                // For cafe list item
+                const name = cafeItem.querySelector('h3') ? cafeItem.querySelector('h3').textContent : 'Unknown Cafe';
+                const imageEl = cafeItem.querySelector('img');
+                const ratingEl = cafeItem.querySelector('.rating-text');
+                const distanceEl = cafeItem.querySelector('.distance');
+                
+                cafeData = {
+                    id: cafeId,
+                    name: name,
+                    image: imageEl ? imageEl.src : '',
+                    rating: ratingEl ? ratingEl.textContent : '0 (0)',
+                    distance: distanceEl ? distanceEl.textContent : '0 km',
+                    address: '',
+                    status: ''
+                };
+            } else if (document.getElementById('cafe-details-page')) {
+                // For cafe details page
+                const detailsPage = document.getElementById('cafe-details-page');
+                const name = detailsPage.querySelector('h1') ? detailsPage.querySelector('h1').textContent : 'Unknown Cafe';
+                const imageEl = detailsPage.querySelector('.cafe-details-header img');
+                
+                cafeData = {
+                    id: cafeId,
+                    name: name,
+                    image: imageEl ? imageEl.src : '',
+                    rating: '0 (0)',
+                    distance: '0 km',
+                    address: '',
+                    status: ''
+                };
+            }
+        } catch (error) {
+            console.error('Error extracting cafe data from DOM:', error);
+            // Create minimal data
+            cafeData = { id: cafeId, name: 'Cafe', image: '' };
+        }
+    }
 
     if (favoriteManager.isFavorite(cafeId)) {
         // Remove from favorites
         favoriteManager.removeFromFavorites(cafeId);
+        
+        // Update UI
+        const heartIcon = button.querySelector('i');
+        if (heartIcon) {
+            heartIcon.className = 'far fa-heart';
+        }
         button.classList.remove('favorited');
-        heartIcon.className = 'far fa-heart';
+        
         showToast('<i class="fas fa-heart-broken" style="color: #e91e63;"></i> Removed from favorites', 'error');
     } else {
         // Add to favorites
         favoriteManager.addToFavorites(cafeId, cafeData);
+        
+        // Update UI
+        const heartIcon = button.querySelector('i');
+        if (heartIcon) {
+            heartIcon.className = 'fas fa-heart';
+        }
         button.classList.add('favorited');
-        heartIcon.className = 'fas fa-heart';
+        
         showToast('<i class="fas fa-heart" style="color: #e91e63;"></i> Added to favorites!', 'success');
     }
 }

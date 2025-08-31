@@ -937,6 +937,27 @@ class CaffyRuteGoogleMaps {
                     console.warn('Error getting opening hours for', place.name, hoursError);
                 }
                 
+                // Calculate distance between cafe and user location properly
+                let distance = 0;
+                try {
+                    if (this.userLocation && this.userLocation.lat && this.userLocation.lng) {
+                        distance = this.calculateDistance(
+                            this.userLocation.lat, 
+                            this.userLocation.lng,
+                            lat, 
+                            lng
+                        );
+                        // Check if distance is a valid number
+                        if (isNaN(distance) || !isFinite(distance)) {
+                            console.warn('Invalid distance calculated for', place.name);
+                            distance = 0;
+                        }
+                    }
+                } catch (distError) {
+                    console.error('Error calculating distance:', distError);
+                    distance = 0;
+                }
+                
                 // Use basic place data first for immediate display
                 const basicCafe = {
                     id: place.place_id,
@@ -946,12 +967,7 @@ class CaffyRuteGoogleMaps {
                     priceLevel: place.price_level || 2,
                     address: place.vicinity || place.formatted_address || 'Address not available',
                     location: { lat, lng },
-                    distance: this.calculateDistance(
-                        this.userLocation.lat, 
-                        this.userLocation.lng,
-                        lat, 
-                        lng
-                    ),
+                    distance: distance,
                     isOpen: isOpen,
                     photos: photoUrl ? [{ url: photoUrl }] : [],
                     businessStatus: place.business_status,
@@ -1333,6 +1349,11 @@ class CaffyRuteGoogleMaps {
                     <i class="fas fa-store"></i>
                 </div>` : '';
     
+            // Check if this cafe is in favorites
+            const isFavorite = window.favoriteManager && window.favoriteManager.isFavorite(cafe.id);
+            const favoriteClass = isFavorite ? 'favorited' : '';
+            const heartIconClass = isFavorite ? 'fas fa-heart' : 'far fa-heart';
+    
             // Simplified, faster HTML structure
             cafeDiv.innerHTML = `
                 <div class="cafe-image">
@@ -1351,10 +1372,14 @@ class CaffyRuteGoogleMaps {
                         <span class="status ${statusClass}"><i class="fas fa-clock"></i> ${statusText}</span>
                         ${cafe.address ? `<span class="address-snippet"><i class="fas fa-location-dot"></i> ${cafe.address.split(',')[0]}</span>` : ''}
                     </div>
+                    <div class="cafe-description" style="display:none;">Coffee Shop</div>
+                    <div class="cafe-features" style="display:none;">
+                        <span class="feature">Coffee</span>
+                    </div>
                 </div>
                 <div class="cafe-actions">
-                    <button class="heart-btn" onclick="toggleFavorite(this, '${cafe.id || `unknown-${index}`}')">
-                        <i class="far fa-heart"></i>
+                    <button class="heart-btn ${favoriteClass}" onclick="toggleFavorite(this, '${cafe.id || `unknown-${index}`}')">
+                        <i class="${heartIconClass}"></i>
                     </button>
                     <button class="view-details-btn" onclick="window.showCafeDetails('${cafe.id}')">
                         <i class="fas fa-info-circle"></i> Details
