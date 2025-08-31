@@ -418,10 +418,28 @@ class CaffyRuteGoogleMaps {
             
             // Automatically search for nearby cafes on page load
             console.log('Starting automatic search for nearby cafes...');
-            // Force a smaller initial radius to get faster results
-            setTimeout(() => {
-                this.searchNearbyCafes(2000);  // 2km initial radius for faster results
-            }, 100);
+            
+            // Ensure we have a user location before searching
+            if (!this.userLocation) {
+                console.warn('User location not set yet, waiting before searching for cafes...');
+                // Wait a bit longer for location to be retrieved
+                setTimeout(() => {
+                    console.log('Retrying cafe search with location:', this.userLocation);
+                    if (this.userLocation) {
+                        this.searchNearbyCafes(1500);  // 1.5km initial radius for faster results
+                    } else {
+                        console.warn('Still no user location, using default location');
+                        this.userLocation = { lat: 28.6139, lng: 77.2090 }; // Default to New Delhi
+                        this.searchNearbyCafes(1500);
+                    }
+                }, 1000); // Wait longer for location to be retrieved
+            } else {
+                // We already have location, proceed with search after a short delay
+                setTimeout(() => {
+                    console.log('Searching for cafes now with location:', this.userLocation);
+                    this.searchNearbyCafes(1500);  // 1.5km initial radius for faster results
+                }, 500);
+            }
             
             console.log('Google Maps initialization completed');
             
@@ -468,6 +486,15 @@ class CaffyRuteGoogleMaps {
     // Search for nearby cafes using Google Places API with enhanced filtering
     searchNearbyCafes(radius = 5000, attemptCount = 0) { // Default 5km radius
         console.log('Searching for cafes with location:', this.userLocation, 'radius:', radius, 'attempt:', attemptCount + 1);
+        
+        // Validate user location first
+        if (!this.userLocation) {
+            console.error('Cannot search cafes: User location not set');
+            this.showError('Your location is not available. Please enable location services or search for a specific location.');
+            this.hideLoading();
+            this.displayCafes(); // Show "No cafes found" message
+            return;
+        }
         
         if (!this.service) {
             console.error('Places service not initialized');
@@ -520,8 +547,8 @@ class CaffyRuteGoogleMaps {
         const request = {
             location: this.userLocation,
             radius: radius,
-            type: ['cafe', 'restaurant', 'bar', 'bakery', 'food'], // Expanded types to get more results
-            keyword: 'coffee cafe espresso',
+            type: ['cafe', 'restaurant', 'bakery'], // Focus on relevant types
+            keyword: 'cafe coffee espresso tea', // Expanded keywords for better matches
             fields: [
                 'place_id', 'name', 'geometry', 'rating', 'user_ratings_total',
                 'price_level', 'photos', 'opening_hours', 'formatted_address',
@@ -531,6 +558,12 @@ class CaffyRuteGoogleMaps {
         };
 
         console.log('Making Places API request:', request);
+        
+        // Show additional UI feedback
+        const sectionHeader = document.querySelector('.section-header h2');
+        if (sectionHeader) {
+            sectionHeader.textContent = 'Finding cafés near you...';
+        }
 
         try {
             this.service.nearbySearch(request, (results, status) => {
@@ -738,9 +771,15 @@ class CaffyRuteGoogleMaps {
         console.log('All search results:', results.length);
         
         // Log the types of places we're finding to help with debugging
-        results.forEach((place, index) => {
-            console.log(`${index + 1}. ${place.name} - Types: ${place.types?.join(', ') || 'none'}`);
+        const typeFrequency = {};
+        results.forEach(place => {
+            if (place.types) {
+                place.types.forEach(type => {
+                    typeFrequency[type] = (typeFrequency[type] || 0) + 1;
+                });
+            }
         });
+        console.log('Types found in results:', typeFrequency);
         
         // Create a scoring system to prioritize more cafe-like establishments
         const scoredResults = results.map(place => {
@@ -748,20 +787,39 @@ class CaffyRuteGoogleMaps {
             
             // Score based on types
             const types = place.types || [];
-            if (types.includes('cafe')) score += 10;
+            if (types.includes('cafe')) score += 15;
             if (types.includes('restaurant')) score += 5;
-            if (types.includes('bakery')) score += 8;
+            if (types.includes('bakery')) score += 10;
             if (types.includes('bar')) score += 4;
             if (types.includes('food')) score += 6;
             if (types.includes('store')) score += 3;
+            if (types.includes('coffee')) score += 15; // Direct coffee type
+            
+            // Prefer places that are likely to serve coffee
+            if (types.includes('meal_takeaway')) score += 4;
+            if (types.includes('point_of_interest')) score += 2;
+            
+            // Penalize establishments less likely to be cafés
+            if (types.includes('gas_station')) score -= 5;
+            if (types.includes('lodging')) score -= 3;
+            if (types.includes('grocery_or_supermarket')) score -= 2;
             
             // Check name for keywords
             const name = place.name.toLowerCase();
-            if (name.includes('cafe') || name.includes('café')) score += 8;
-            if (name.includes('coffee')) score += 8;
-            if (name.includes('espresso')) score += 7;
-            if (name.includes('bakery')) score += 6;
-            if (name.includes('tea')) score += 5;
+            if (name.includes('cafe') || name.includes('café')) score += 12;
+            if (name.includes('coffee')) score += 12;
+            if (name.includes('espresso')) score += 10;
+            if (name.includes('bakery')) score += 8;
+            if (name.includes('tea')) score += 7;
+            
+            // Look for coffee shop chains
+            const knownChains = ['starbucks', 'costa', 'caffè nero', 'peet', 'dunkin', 'tim hortons'];
+            for (const chain of knownChains) {
+                if (name.includes(chain)) {
+                    score += 15;
+                    break;
+                }
+            }
             
             // Higher rating is better
             if (place.rating) score += Math.min(place.rating, 5);
@@ -771,11 +829,33 @@ class CaffyRuteGoogleMaps {
                 score += Math.min(place.user_ratings_total / 100, 5);
             }
             
+            // Calculate distance
+            if (this.userLocation && place.geometry && place.geometry.location) {
+                const distance = this.calculateDistance(
+                    this.userLocation.lat,
+                    this.userLocation.lng,
+                    place.geometry.location.lat(),
+                    place.geometry.location.lng()
+                );
+                
+                // Add the distance to the place object for later use
+                place.distance = distance;
+                
+                // Add a small bonus for closer places
+                score += Math.max(0, 5 - distance); // Up to 5 points for very close places
+            }
+            
             return { place, score };
         });
         
         // Sort by score (highest first)
         scoredResults.sort((a, b) => b.score - a.score);
+        
+        // Log the top 5 scored places for debugging
+        console.log('Top 5 scored places:');
+        scoredResults.slice(0, 5).forEach((item, index) => {
+            console.log(`${index + 1}. ${item.place.name} - Score: ${item.score.toFixed(1)} - Types: ${item.place.types?.join(', ') || 'none'}`);
+        });
         
         // Take the top 30 results
         const filteredResults = scoredResults.slice(0, 30).map(item => item.place);
@@ -1248,6 +1328,9 @@ class CaffyRuteGoogleMaps {
         
         // Hide loading indicator
         this.hideLoading();
+        
+        // Make sure cafe list is visible even if empty
+        cafeList.style.display = 'block';
 
         // Handle empty results
         if (!this.cafes || this.cafes.length === 0) {
@@ -1277,10 +1360,6 @@ class CaffyRuteGoogleMaps {
                 cafeCount.textContent = '0 cafés found';
             }
             
-            // Make sure cafe list is visible
-            cafeList.style.display = 'block';
-            
-            this.hideLoading();
             return;
         }
         
