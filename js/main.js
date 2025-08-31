@@ -311,24 +311,10 @@ function initializeGoogleMapsFeatures() {
     function sortCafes(sortBy) {
         if (!window.caffyRuteApp || !window.caffyRuteApp.cafes) return;
         
-        const cafes = window.caffyRuteApp.cafes;
-        
-        switch (sortBy) {
-            case 'rating':
-                cafes.sort((a, b) => b.rating - a.rating);
-                break;
-            case 'distance':
-                cafes.sort((a, b) => a.distance - b.distance);
-                break;
-            case 'price':
-                cafes.sort((a, b) => a.priceLevel - b.priceLevel);
-                break;
-            case 'reviews':
-                cafes.sort((a, b) => b.reviewCount - a.reviewCount);
-                break;
+        // Use the sortCafes method from the CaffyRuteGoogleMaps class
+        if (window.caffyRuteApp.sortCafes) {
+            window.caffyRuteApp.sortCafes(sortBy);
         }
-        
-        window.caffyRuteApp.displayCafes();
     }
 }
 
@@ -520,6 +506,18 @@ function initSearchFunctionality() {
                 unifiedSearchBtn.click();
             }
         });
+    }
+    
+    // Set the default sort to distance (nearest first)
+    const sortSelect = document.getElementById('sort');
+    if (sortSelect && window.caffyRuteApp) {
+        sortSelect.value = 'distance';
+        // Ensure we apply distance sorting by default
+        setTimeout(() => {
+            if (window.caffyRuteApp && window.caffyRuteApp.sortCafes) {
+                window.caffyRuteApp.sortCafes('distance');
+            }
+        }, 1000);
     }
     
     // Check if Google Maps app is ready every second

@@ -390,6 +390,9 @@ class CaffyRuteGoogleMaps {
             // Initialize services first
             this.initializeServices();
             
+            // Show loading message
+            this.showLoading('Getting your location and finding nearby cafés...');
+            
             // Get user's current location
             await this.getCurrentLocation();
             
@@ -410,8 +413,11 @@ class CaffyRuteGoogleMaps {
                 return;
             }
             
-            // Search for nearby cafes
-            console.log('Starting search for nearby cafes...');
+            // Add marker for user's location
+            this.addLocationMarker(this.userLocation);
+            
+            // Automatically search for nearby cafes on page load
+            console.log('Starting automatic search for nearby cafes...');
             this.searchNearbyCafes();
             
             console.log('Google Maps initialization completed');
@@ -457,7 +463,7 @@ class CaffyRuteGoogleMaps {
     }
 
     // Search for nearby cafes using Google Places API with enhanced filtering
-    searchNearbyCafes(radius = 5000, attemptCount = 0) { // Increased radius to find more results
+    searchNearbyCafes(radius = 5000, attemptCount = 0) { // Default 5km radius
         console.log('Searching for cafes with location:', this.userLocation, 'radius:', radius, 'attempt:', attemptCount + 1);
         
         if (!this.service) {
@@ -482,6 +488,25 @@ class CaffyRuteGoogleMaps {
         const cafeList = document.getElementById('cafe-list');
         if (cafeList) {
             cafeList.style.display = 'none';
+        }
+        
+        // Update the radius selector to match the current search radius
+        const radiusSelect = document.getElementById('radius');
+        if (radiusSelect) {
+            // Find the closest matching option
+            const options = Array.from(radiusSelect.options);
+            let bestMatch = options[0];
+            let minDiff = Math.abs(parseInt(options[0].value) - radius);
+            
+            for (let i = 1; i < options.length; i++) {
+                const diff = Math.abs(parseInt(options[i].value) - radius);
+                if (diff < minDiff) {
+                    minDiff = diff;
+                    bestMatch = options[i];
+                }
+            }
+            
+            radiusSelect.value = bestMatch.value;
         }
         
         const request = {
@@ -806,6 +831,12 @@ class CaffyRuteGoogleMaps {
                 // Display first results immediately
                 this.displayCafes();
                 this.addMapMarkers();
+                
+                // Update section header to show we're displaying nearby cafés
+                const sectionHeader = document.querySelector('.section-header h2');
+                if (sectionHeader) {
+                    sectionHeader.textContent = 'Cafés Near You';
+                }
             } else {
                 console.log('No valid cafes in first batch');
                 this.displayCafes(); // Will show "No cafes found" message
@@ -985,17 +1016,49 @@ class CaffyRuteGoogleMaps {
         return features;
     }
     
-    // Optimized sorting
+    // Optimized sorting by different criteria
     sortCafesByDistance() {
+        console.log('Sorting cafés by distance...');
         this.cafes.sort((a, b) => {
             // Primary sort by distance
-            const distanceDiff = a.distance - b.distance;
-            if (Math.abs(distanceDiff) > 0.1) {
-                return distanceDiff;
-            }
-            // Secondary sort by rating
-            return (b.rating || 0) - (a.rating || 0);
+            return (a.distance || 0) - (b.distance || 0);
         });
+    }
+    
+    // Sort cafes by specified criteria
+    sortCafes(sortBy) {
+        console.log('Sorting cafes by:', sortBy);
+        
+        if (!this.cafes || this.cafes.length === 0) {
+            console.log('No cafes to sort');
+            return;
+        }
+        
+        switch (sortBy) {
+            case 'rating':
+                this.cafes.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+                break;
+            case 'distance':
+                this.sortCafesByDistance();
+                break;
+            case 'price':
+                this.cafes.sort((a, b) => {
+                    // Handle undefined or null price levels
+                    const priceA = a.priceLevel !== undefined ? a.priceLevel : 2;
+                    const priceB = b.priceLevel !== undefined ? b.priceLevel : 2;
+                    return priceA - priceB;
+                });
+                break;
+            case 'reviews':
+                this.cafes.sort((a, b) => (b.reviewCount || 0) - (a.reviewCount || 0));
+                break;
+            default:
+                // Default to distance sorting
+                this.sortCafesByDistance();
+        }
+        
+        // Update display after sorting
+        this.displayCafes();
     }
 
     // Get detailed place information
