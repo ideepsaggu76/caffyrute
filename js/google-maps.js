@@ -453,8 +453,8 @@ class CaffyRuteGoogleMaps {
     }
 
     // Search for nearby cafes using Google Places API with enhanced filtering
-    searchNearbyCafes(radius = 5000) { // Increased radius to find more results
-        console.log('Searching for cafes with location:', this.userLocation);
+    searchNearbyCafes(radius = 5000, attemptCount = 0) { // Increased radius to find more results
+        console.log('Searching for cafes with location:', this.userLocation, 'radius:', radius, 'attempt:', attemptCount + 1);
         
         if (!this.service) {
             console.error('Places service not initialized');
@@ -463,16 +463,26 @@ class CaffyRuteGoogleMaps {
             return;
         }
         
+        // Update loading message with radius information
+        const loadingElement = document.getElementById('loading-cafes');
+        if (loadingElement) {
+            loadingElement.innerHTML = `
+                <div class="loading-spinner"></div>
+                <p>Finding cafés within ${(radius/1000).toFixed(1)} km of your location...</p>
+            `;
+        }
+        
         const request = {
             location: this.userLocation,
             radius: radius,
-            type: ['restaurant'], // Use restaurant type to get more results
+            type: ['restaurant', 'cafe', 'bar'], // Expanded types to get more results
             keyword: 'coffee cafe',
             fields: [
                 'place_id', 'name', 'geometry', 'rating', 'user_ratings_total',
                 'price_level', 'photos', 'opening_hours', 'formatted_address',
                 'types', 'business_status', 'vicinity'
-            ]
+            ],
+            rankBy: radius > 20000 ? google.maps.places.RankBy.DISTANCE : undefined // Use distance ranking for very large areas
         };
 
         console.log('Making Places API request:', request);
@@ -485,7 +495,20 @@ class CaffyRuteGoogleMaps {
                 if (status === google.maps.places.PlacesServiceStatus.OK) {
                     if (!results || results.length === 0) {
                         console.log('No results found, trying broader search...');
-                        this.searchWithAlternativeTerms(radius);
+                        
+                        // Try alternative search terms first
+                        if (attemptCount === 0) {
+                            this.searchWithAlternativeTerms(radius, attemptCount + 1);
+                        } 
+                        // Then try increasing radius if we haven't gone too far
+                        else if (radius < 20000) { // Max 20 km radius
+                            const newRadius = radius * 2; // Double the radius
+                            console.log(`Increasing search radius to ${newRadius}m`);
+                            this.searchNearbyCafes(newRadius, attemptCount + 1);
+                        } else {
+                            console.log('Reached maximum search radius, using basic establishments search');
+                            this.searchBasicEstablishments(radius);
+                        }
                         return;
                     }
                     
@@ -502,12 +525,31 @@ class CaffyRuteGoogleMaps {
                     // Quick filter and process immediately
                     const filteredResults = this.quickFilterCafes(results);
                     console.log('Filtered results count:', filteredResults.length);
-                    this.processCafeResults(filteredResults);
+                    
+                    if (filteredResults.length === 0 && radius < 20000) {
+                        // If filtering removed all results, try larger radius
+                        const newRadius = radius * 2;
+                        console.log(`No cafes after filtering, increasing radius to ${newRadius}m`);
+                        this.searchNearbyCafes(newRadius, attemptCount + 1);
+                    } else {
+                        this.processCafeResults(filteredResults);
+                    }
                 } else {
                     console.error('Places search failed:', status);
-                    this.showError('Unable to find nearby cafes. Please try again.');
-                    this.hideLoading();
-                    this.displayCafes(); // Will show "No cafes found" message
+                    
+                    if (status === google.maps.places.PlacesServiceStatus.ZERO_RESULTS && radius < 20000) {
+                        // Try larger radius if zero results
+                        const newRadius = radius * 2;
+                        console.log(`Zero results, increasing radius to ${newRadius}m`);
+                        this.searchNearbyCafes(newRadius, attemptCount + 1);
+                    } else if (attemptCount === 0) {
+                        // Try alternative terms as fallback
+                        this.searchWithAlternativeTerms(radius, attemptCount + 1);
+                    } else {
+                        this.showError('Unable to find nearby cafes. Please try again.');
+                        this.hideLoading();
+                        this.displayCafes(); // Will show "No cafes found" message
+                    }
                 }
             });
         } catch (error) {
@@ -519,65 +561,173 @@ class CaffyRuteGoogleMaps {
     }
     
     // Alternative search terms if main search fails
-    searchWithAlternativeTerms(radius) {
-        console.log('Trying alternative search terms...');
+    searchWithAlternativeTerms(radius, attemptCount = 0) {
+        console.log('Trying alternative search terms with radius:', radius, 'attempt:', attemptCount + 1);
         
+        // Update loading message
+        const loadingElement = document.getElementById('loading-cafes');
+        if (loadingElement) {
+            loadingElement.innerHTML = `
+                <div class="loading-spinner"></div>
+                <p>Trying alternative search terms within ${(radius/1000).toFixed(1)} km...</p>
+            `;
+        }
         const alternativeRequest = {
             location: this.userLocation,
             radius: radius,
-            type: ['food'], // Even broader search
-            keyword: 'cafe restaurant coffee food',
+            type: ['food', 'bakery', 'meal_takeaway'], // Broader search with more types
+            keyword: 'cafe restaurant coffee espresso bakery',
         };
 
-        this.service.nearbySearch(alternativeRequest, (results, status) => {
-            console.log('Alternative search results:', status, results);
-            
-            if (status === google.maps.places.PlacesServiceStatus.OK && results.length > 0) {
-                const filteredResults = this.quickFilterCafes(results);
-                console.log('Alternative filtered results:', filteredResults.length);
-                this.processCafeResults(filteredResults);
+        try {
+            this.service.nearbySearch(alternativeRequest, (results, status) => {
+                console.log('Alternative search results status:', status);
+                console.log('Alternative search results count:', results ? results.length : 0);
+                
+                if (status === google.maps.places.PlacesServiceStatus.OK && results && results.length > 0) {
+                    const filteredResults = this.quickFilterCafes(results);
+                    console.log('Alternative filtered results:', filteredResults.length);
+                    
+                    if (filteredResults.length > 0) {
+                        this.processCafeResults(filteredResults);
+                    } else if (radius < 20000) {
+                        // If filtering removed all results, try larger radius
+                        const newRadius = radius * 2;
+                        console.log(`No cafes after alternative filtering, increasing radius to ${newRadius}m`);
+                        this.searchNearbyCafes(newRadius, attemptCount + 1);
+                    } else {
+                        // If we've tried everything, use basic establishments search
+                        this.searchBasicEstablishments(radius);
+                    }
+                } else {
+                    // If still no results, try a broader search with larger radius
+                    if (radius < 20000) {
+                        const newRadius = radius * 2;
+                        console.log(`No results with alternative terms, increasing radius to ${newRadius}m`);
+                        this.searchNearbyCafes(newRadius, attemptCount + 1);
+                    } else {
+                        // If we've tried everything up to maximum radius, use basic establishments
+                        this.searchBasicEstablishments(radius);
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('Error in alternative search:', error);
+            if (radius < 20000) {
+                const newRadius = radius * 2;
+                this.searchNearbyCafes(newRadius, attemptCount + 1);
             } else {
-                // If still no results, try the most basic search
                 this.searchBasicEstablishments(radius);
             }
-        });
+        }
     }
     
     // Most basic search - just establishments
     searchBasicEstablishments(radius) {
-        console.log('Trying basic establishments search...');
+        console.log('Trying basic establishments search with radius:', radius);
+        
+        // Update loading message
+        const loadingElement = document.getElementById('loading-cafes');
+        if (loadingElement) {
+            loadingElement.innerHTML = `
+                <div class="loading-spinner"></div>
+                <p>Searching for any establishments within ${(radius/1000).toFixed(1)} km...</p>
+            `;
+        }
         
         const basicRequest = {
             location: this.userLocation,
-            radius: radius,
+            radius: Math.max(radius, 20000), // Use at least 20km for last resort search
             type: ['establishment'],
+            keyword: 'restaurant food drink cafe', // Add some keywords to help find relevant places
+            rankBy: google.maps.places.RankBy.PROMINENCE // Sort by prominence to get popular places
         };
 
-        this.service.nearbySearch(basicRequest, (results, status) => {
-            console.log('Basic search results:', status, results);
-            
-            if (status === google.maps.places.PlacesServiceStatus.OK) {
-                // Show first 10 establishments if nothing else works
-                const basicResults = results.slice(0, 10);
-                this.processCafeResults(basicResults);
-            } else {
-                this.showError('No cafes found in your area. Try changing your location.');
-                this.hideLoading();
-            }
-        });
+        try {
+            this.service.nearbySearch(basicRequest, (results, status) => {
+                console.log('Basic search results status:', status);
+                console.log('Basic search results count:', results ? results.length : 0);
+                
+                if (status === google.maps.places.PlacesServiceStatus.OK && results && results.length > 0) {
+                    // Show up to 15 establishments if nothing else works
+                    const basicResults = results.slice(0, 15);
+                    console.log('Using basic establishments:', basicResults.length);
+                    
+                    // Mark these results as fallback so UI can indicate they're not strictly cafes
+                    basicResults.forEach(place => {
+                        place.isFallbackResult = true;
+                    });
+                    
+                    this.processCafeResults(basicResults);
+                } else {
+                    console.log('No establishments found even with basic search');
+                    this.showError('No establishments found in your area. Try changing your location.');
+                    this.hideLoading();
+                    this.displayCafes(); // Will show "No cafes found" message
+                }
+            });
+        } catch (error) {
+            console.error('Error in basic search:', error);
+            this.showError('Error searching for establishments. Please try again.');
+            this.hideLoading();
+            this.displayCafes(); // Will show "No cafes found" message
+        }
     }
 
-    // Quick filter for immediate results (temporarily showing all results)
+    // Quick filter for immediate results
     quickFilterCafes(results) {
+        if (!results || results.length === 0) {
+            console.log('No results to filter');
+            return [];
+        }
+        
         console.log('All search results:', results.length);
         
-        // Temporarily show all results to debug the issue
+        // Log the types of places we're finding to help with debugging
         results.forEach((place, index) => {
             console.log(`${index + 1}. ${place.name} - Types: ${place.types?.join(', ') || 'none'}`);
         });
         
-        // Return all results for now
-        return results.slice(0, 30); // Show more results
+        // Create a scoring system to prioritize more cafe-like establishments
+        const scoredResults = results.map(place => {
+            let score = 0;
+            
+            // Score based on types
+            const types = place.types || [];
+            if (types.includes('cafe')) score += 10;
+            if (types.includes('restaurant')) score += 5;
+            if (types.includes('bakery')) score += 8;
+            if (types.includes('bar')) score += 4;
+            if (types.includes('food')) score += 6;
+            if (types.includes('store')) score += 3;
+            
+            // Check name for keywords
+            const name = place.name.toLowerCase();
+            if (name.includes('cafe') || name.includes('café')) score += 8;
+            if (name.includes('coffee')) score += 8;
+            if (name.includes('espresso')) score += 7;
+            if (name.includes('bakery')) score += 6;
+            if (name.includes('tea')) score += 5;
+            
+            // Higher rating is better
+            if (place.rating) score += Math.min(place.rating, 5);
+            
+            // More reviews is better
+            if (place.user_ratings_total) {
+                score += Math.min(place.user_ratings_total / 100, 5);
+            }
+            
+            return { place, score };
+        });
+        
+        // Sort by score (highest first)
+        scoredResults.sort((a, b) => b.score - a.score);
+        
+        // Take the top 30 results
+        const filteredResults = scoredResults.slice(0, 30).map(item => item.place);
+        console.log('Filtered and scored results:', filteredResults.length);
+        
+        return filteredResults;
     }
 
     // Process cafe search results with optimized performance
@@ -914,24 +1064,50 @@ class CaffyRuteGoogleMaps {
             cafeList.innerHTML = `
                 <div class="no-results">
                     <i class="fas fa-coffee"></i>
-                    <p>No cafes found in this area. Try changing your location or search terms.</p>
+                    <p>No cafés found in this area. Try changing your location or search terms.</p>
+                    <button class="btn-secondary retry-search-btn">
+                        <i class="fas fa-search"></i> Try with a larger radius
+                    </button>
                 </div>
             `;
+            
+            // Add event listener to the retry button
+            const retryButton = cafeList.querySelector('.retry-search-btn');
+            if (retryButton) {
+                retryButton.addEventListener('click', () => {
+                    // Try with a much larger radius (20km)
+                    this.searchNearbyCafes(20000);
+                });
+            }
             
             // Update cafe count
             const cafeCount = document.querySelector('.cafe-count');
             if (cafeCount) {
-                cafeCount.textContent = '0 cafes found';
+                cafeCount.textContent = '0 cafés found';
             }
             
             this.hideLoading();
             return;
         }
 
+        // Check if we're showing fallback results
+        const hasFallbackResults = this.cafes.some(cafe => cafe.isFallbackResult);
+        
         // Clear loading placeholder if exists
         const loadingPlaceholder = cafeList.querySelector('.loading-placeholder');
         if (loadingPlaceholder) {
             loadingPlaceholder.remove();
+        }
+
+        // Add a notice if showing fallback results
+        if (hasFallbackResults) {
+            const fallbackNotice = document.createElement('div');
+            fallbackNotice.className = 'fallback-notice';
+            fallbackNotice.innerHTML = `
+                <i class="fas fa-info-circle"></i>
+                <p>Showing nearby establishments that may not be cafés.</p>
+            `;
+            cafeList.appendChild(fallbackNotice);
         }
 
         // Use document fragment for better performance
@@ -986,9 +1162,14 @@ class CaffyRuteGoogleMaps {
     // Create optimized cafe element for faster rendering
     createOptimizedCafeElement(cafe, index) {
         try {
+            if (!cafe) {
+                console.error('Invalid cafe data provided to createOptimizedCafeElement');
+                return document.createElement('div'); // Return empty div as fallback
+            }
+            
             const cafeDiv = document.createElement('div');
-            cafeDiv.className = 'cafe-item';
-            cafeDiv.setAttribute('data-cafe-id', cafe.id);
+            cafeDiv.className = cafe.isFallbackResult ? 'cafe-item fallback-result' : 'cafe-item';
+            cafeDiv.setAttribute('data-cafe-id', cafe.id || `unknown-${index}`);
             
             // Safely handle image URL
             let imageUrl = 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=200&h=150&fit=crop&q=80';
@@ -1000,12 +1181,19 @@ class CaffyRuteGoogleMaps {
             const priceSymbols = '$'.repeat(Math.max(1, cafe.priceLevel || 2));
             
             const statusClass = cafe.isOpen === true ? 'open' : (cafe.isOpen === false ? 'closed' : 'unknown');
-            const statusText = cafe.isOpen === true ? 'Open' : (cafe.isOpen === false ? 'Closed' : 'Unknown');
+            const statusText = cafe.isOpen === true ? 'Open' : (cafe.isOpen === false ? 'Closed' : 'Hours unknown');
+            
+            // Add a fallback badge if this is not a true cafe
+            const fallbackBadge = cafe.isFallbackResult ? 
+                `<div class="fallback-badge" title="This result may not be a café">
+                    <i class="fas fa-store"></i>
+                </div>` : '';
     
             // Simplified, faster HTML structure
             cafeDiv.innerHTML = `
                 <div class="cafe-image">
                     <img src="${imageUrl}" alt="${cafe.name}" loading="lazy">
+                    ${fallbackBadge}
                 </div>
                 <div class="cafe-details">
                     <h3>${cafe.name}</h3>
@@ -1020,7 +1208,7 @@ class CaffyRuteGoogleMaps {
                     </div>
                 </div>
                 <div class="cafe-actions">
-                    <button class="heart-btn" onclick="toggleFavorite(this, '${cafe.id}')">
+                    <button class="heart-btn" onclick="toggleFavorite(this, '${cafe.id || `unknown-${index}`}')">
                         <i class="far fa-heart"></i>
                     </button>
                     <button class="btn-secondary" onclick="window.showCafeDetails('${cafe.id}')">Details</button>
@@ -1293,7 +1481,7 @@ class CaffyRuteGoogleMaps {
     }
     
     // Show loading indicator
-    showLoading() {
+    showLoading(message = 'Finding the best cafés near you...') {
         try {
             const loadingElement = document.getElementById('loading-cafes');
             const cafeList = document.getElementById('cafe-list');
@@ -1301,11 +1489,11 @@ class CaffyRuteGoogleMaps {
             if (loadingElement && cafeList) {
                 loadingElement.innerHTML = `
                     <div class="loading-spinner"></div>
-                    <p>Finding the best cafés near you...</p>
+                    <p>${message}</p>
                 `;
                 loadingElement.style.display = 'flex';
                 cafeList.style.display = 'none';
-                console.log('Showing loading indicator');
+                console.log('Showing loading indicator:', message);
             } else {
                 console.warn('Loading or cafe list elements not found');
             }

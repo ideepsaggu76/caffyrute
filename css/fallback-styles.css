@@ -1,0 +1,98 @@
+/* Fallback styles for when cafes aren't found */
+.no-results {
+    text-align: center;
+    padding: 2rem;
+    background: #f9f5f1;
+    border-radius: 10px;
+    margin: 2rem 0;
+    border: 1px solid #e6d9c9;
+}
+
+.no-results i {
+    font-size: 3rem;
+    color: var(--primary-brown);
+    margin-bottom: 1rem;
+}
+
+.no-results p {
+    font-size: 1.1rem;
+    color: #5a4534;
+    margin-bottom: 1.5rem;
+}
+
+.retry-search-btn {
+    padding: 0.8rem 1.5rem;
+    background: #fff;
+    color: var(--primary-brown);
+    border: 2px solid var(--primary-brown);
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.retry-search-btn:hover {
+    background: var(--primary-brown);
+    color: white;
+    transform: translateY(-2px);
+}
+
+/* Fallback notice for non-cafe results */
+.fallback-notice {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    background: #fff7e6;
+    border-left: 4px solid #f9a825;
+    margin-bottom: 1.5rem;
+    border-radius: 4px;
+}
+
+.fallback-notice i {
+    font-size: 1.5rem;
+    color: #f9a825;
+    margin-right: 1rem;
+}
+
+.fallback-notice p {
+    color: #664400;
+    margin: 0;
+}
+
+/* Fallback result styling */
+.cafe-item.fallback-result {
+    border: 1px solid #fad67a;
+    background: #fffcf0;
+}
+
+.fallback-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(249, 168, 37, 0.9);
+    color: white;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.fallback-badge i {
+    font-size: 14px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .fallback-notice {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .fallback-notice i {
+        margin-bottom: 0.5rem;
+        margin-right: 0;
+    }
+}
