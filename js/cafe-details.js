@@ -2,7 +2,28 @@
 CaffyRuteGoogleMaps.prototype.getAdditionalCafeDetails = function(cafe) {
     // This function fetches additional details about a café when needed
     if (!cafe.detailsLoaded && window.google && window.google.maps) {
-        console.log('Getting additional details for café:', cafe.name);
+       // Create full-page detail view
+    const detailsPage = document.createElement('div');
+    detailsPage.className = 'cafe-details-page';
+    detailsPage.id = 'cafe-details-page';
+    
+    // Get header image
+    let headerImage = 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=1200&h=800&fit=crop&q=80';
+    if (cafe.photos && cafe.photos.length > 0) {
+        headerImage = cafe.photos[0].url.replace('400', '1200').replace('300', '800');
+    }
+    
+    const stars = window.caffyRuteApp.generateStars(cafe.rating || 0);
+    const priceSymbols = '$'.repeat(Math.max(1, cafe.priceLevel || 2));
+    
+    // Check if it's a favorite
+    const isFavorite = window.favoriteManager && window.favoriteManager.isFavorite(cafe.id);
+    const favoriteClass = isFavorite ? 'favorited' : '';
+    const heartIconClass = isFavorite ? 'fas fa-heart' : 'far fa-heart';
+    const favoriteText = isFavorite ? 'Remove Favorite' : 'Add to Favorites';
+    
+    console.log('Cafe details:', cafe);
+    console.log('Checking if cafe has reviews:', cafe.reviews ? cafe.reviews.length : 'No reviews');
         
         // Create a loading indicator
         const loadingDetails = document.createElement('div');
@@ -56,6 +77,7 @@ CaffyRuteGoogleMaps.prototype.getAdditionalCafeDetails = function(cafe) {
                 
                 // Update reviews
                 if (place.reviews && place.reviews.length > 0) {
+                    console.log('Found reviews:', place.reviews.length);
                     cafe.reviews = place.reviews.map(review => ({
                         author: review.author_name,
                         rating: review.rating,
@@ -66,6 +88,8 @@ CaffyRuteGoogleMaps.prototype.getAdditionalCafeDetails = function(cafe) {
                     
                     // Update reviews section
                     this.updateCafeReviewsSection(cafe);
+                } else {
+                    console.log('No reviews found for:', cafe.name);
                 }
                 
                 // Update opening hours
@@ -125,10 +149,18 @@ CaffyRuteGoogleMaps.prototype.updateCafePhotosSection = function(cafe) {
 };
 
 CaffyRuteGoogleMaps.prototype.updateCafeReviewsSection = function(cafe) {
-    if (!cafe.reviews || cafe.reviews.length === 0) return;
+    console.log('Updating cafe reviews section', cafe.reviews);
+    
+    if (!cafe.reviews || cafe.reviews.length === 0) {
+        console.log('No reviews available for cafe:', cafe.name);
+        return;
+    }
     
     const reviewsList = document.querySelector('.reviews-list');
-    if (!reviewsList) return;
+    if (!reviewsList) {
+        console.log('Reviews list element not found in DOM');
+        return;
+    }
     
     // Clear existing reviews
     reviewsList.innerHTML = '';
@@ -262,6 +294,12 @@ window.getDirections = function(lat, lng, name) {
 };
 
 function showCafeDetailPage(cafe) {
+    // Create loading spinner
+    const loadingSpinner = document.createElement('div');
+    loadingSpinner.className = 'loading-spinner active';
+    loadingSpinner.innerHTML = '<div class="spinner"></div>';
+    document.body.appendChild(loadingSpinner);
+    
     // Get more details if needed
     window.caffyRuteApp.getAdditionalCafeDetails(cafe);
     
@@ -288,9 +326,12 @@ function showCafeDetailPage(cafe) {
     detailsPage.innerHTML = `
         <div class="cafe-details-header">
             <img src="${headerImage}" alt="${cafe.name}">
-            <button class="cafe-details-back" onclick="closeCafeDetails()">
+            <button class="cafe-details-back" aria-label="Back">
                 <i class="fas fa-arrow-left"></i>
+                <span class="sr-only">Back</span>
             </button>
+            <div class="swipe-hint"></div>
+            <div class="gesture-hint">Swipe right or double-tap to close</div>
             <div class="cafe-details-overlay">
                 <h1>${cafe.name}</h1>
                 <div class="cafe-details-rating">
@@ -309,10 +350,10 @@ function showCafeDetailPage(cafe) {
         
         <div class="cafe-details-content">
             <div class="cafe-actions-bar">
-                <button class="cafe-action-btn cafe-action-secondary ${favoriteClass}" onclick="toggleFavorite(this, '${cafe.id}')">
+                <button class="cafe-action-btn cafe-action-secondary ${favoriteClass}" onclick="event.preventDefault(); event.stopPropagation(); toggleFavorite(this, '${cafe.id}'); return false;">
                     <i class="${heartIconClass}"></i> ${favoriteText}
                 </button>
-                <button class="cafe-action-btn cafe-action-primary" onclick="window.getDirections(${cafe.location.lat}, ${cafe.location.lng}, '${cafe.name}')">
+                <button class="cafe-action-btn cafe-action-primary" onclick="event.preventDefault(); event.stopPropagation(); window.getDirections(${cafe.location.lat}, ${cafe.location.lng}, '${cafe.name}');">
                     <i class="fas fa-directions"></i> Get Directions
                 </button>
                 ${cafe.website ? 
@@ -385,6 +426,11 @@ function showCafeDetailPage(cafe) {
                 <button class="lightbox-nav lightbox-next" onclick="changePhoto(1)"><i class="fas fa-chevron-right"></i></button>
             </div>
         </div>
+        
+        <!-- Toast Notification for Detail Page -->
+        <div id="toast" class="toast">
+            <span id="toast-message"></span>
+        </div>
     `;
     
     // Append to body
@@ -393,19 +439,115 @@ function showCafeDetailPage(cafe) {
     // Prevent body scrolling
     document.body.style.overflow = 'hidden';
     
+    // Remove loading spinner after a small delay to ensure content is rendered
+    setTimeout(() => {
+        const loadingSpinner = document.querySelector('.loading-spinner');
+        if (loadingSpinner) {
+            loadingSpinner.classList.remove('active');
+            setTimeout(() => loadingSpinner.remove(), 300);
+        }
+    }, 500);
+    
     // Setup global variables for lightbox
     window.currentCafe = cafe;
     window.currentPhotoIndex = 0;
+    
+    // Add event listener to back button
+    const backButton = document.querySelector('.cafe-details-back');
+    if (backButton) {
+        backButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            window.closeCafeDetails();
+        });
+    }
+    
+    // Add swipe gesture handling for mobile
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchEndX = 0;
+    let touchEndY = 0;
+    let touchStartTime = 0;
+    let lastTapTime = 0;
+    
+    detailsPage.addEventListener('touchstart', function(e) {
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+        touchStartTime = new Date().getTime();
+    }, { passive: true });
+    
+    detailsPage.addEventListener('touchend', function(e) {
+        touchEndX = e.changedTouches[0].screenX;
+        touchEndY = e.changedTouches[0].screenY;
+        
+        // Check for double tap
+        const currentTime = new Date().getTime();
+        const tapLength = currentTime - lastTapTime;
+        
+        if (tapLength < 300 && tapLength > 0) {
+            // Double tap detected
+            console.log('Double tap detected - closing details page');
+            window.closeCafeDetails();
+            e.preventDefault();
+        } else {
+            // Handle swipe gesture
+            handleSwipeGesture();
+        }
+        
+        lastTapTime = currentTime;
+    }, { passive: true });
+    
+    function handleSwipeGesture() {
+        const swipeDistanceX = touchEndX - touchStartX;
+        const swipeDistanceY = Math.abs(touchEndY - touchStartY);
+        const elapsedTime = new Date().getTime() - touchStartTime;
+        
+        // Parameters for a valid swipe
+        const minSwipeDistance = 80; // Minimum distance required for a swipe (px)
+        const maxSwipeTime = 500; // Maximum time allowed for a swipe (ms)
+        const maxVerticalOffset = 100; // Maximum vertical movement allowed (px)
+        
+        // Check if swipe is mostly horizontal
+        const isHorizontalSwipe = swipeDistanceY < maxVerticalOffset;
+        
+        // Detect right to left swipe (should not close)
+        if (swipeDistanceX < -minSwipeDistance && isHorizontalSwipe && elapsedTime < maxSwipeTime) {
+            console.log('Swiped left - ignoring');
+            return;
+        }
+        
+        // Detect left to right swipe (should close the details page)
+        if (swipeDistanceX > minSwipeDistance && isHorizontalSwipe && elapsedTime < maxSwipeTime) {
+            console.log('Swiped right - closing details page');
+            window.closeCafeDetails();
+        }
+    }
 }
 
 // Close cafe details page
 window.closeCafeDetails = function() {
     const detailsPage = document.getElementById('cafe-details-page');
     if (detailsPage) {
-        detailsPage.remove();
+        // Add exit animation
+        detailsPage.classList.add('closing');
+        
+        // Remove loading spinner if it exists
+        const loadingSpinner = document.querySelector('.loading-spinner');
+        if (loadingSpinner) {
+            loadingSpinner.classList.remove('active');
+            setTimeout(() => loadingSpinner.remove(), 300);
+        }
+        
+        // Remove element after animation completes
+        setTimeout(() => {
+            detailsPage.remove();
+            document.body.style.overflow = '';
+            window.currentCafe = null;
+        }, 300);
+    } else {
+        document.body.style.overflow = '';
+        window.currentCafe = null;
     }
-    document.body.style.overflow = '';
-    window.currentCafe = null;
 }
 
 // Photo lightbox functions

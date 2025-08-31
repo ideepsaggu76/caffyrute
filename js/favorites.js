@@ -3,19 +3,29 @@ class FavoriteManager {
     constructor() {
         this.favorites = this.loadFavorites();
         this.initializeHeartButtons();
+        console.log('FavoriteManager initialized with', this.favorites.length, 'favorites');
     }
 
     loadFavorites() {
-        const saved = localStorage.getItem('caffyrute_favorites');
-        return saved ? JSON.parse(saved) : [];
+        try {
+            const saved = localStorage.getItem('caffyrute_favorites');
+            const favorites = saved ? JSON.parse(saved) : [];
+            console.log('Loaded favorites from localStorage:', favorites.length, 'cafes');
+            return favorites;
+        } catch (e) {
+            console.error('Error loading favorites from localStorage:', e);
+            return [];
+        }
     }
 
     saveFavorites() {
         localStorage.setItem('caffyrute_favorites', JSON.stringify(this.favorites));
+        console.log('Saved favorites to localStorage:', this.favorites.length, 'cafes');
     }
 
     addToFavorites(cafeId, cafeData) {
         if (!this.isFavorite(cafeId)) {
+            console.log('Adding to favorites:', cafeId, cafeData);
             this.favorites.push({
                 id: cafeId,
                 data: cafeData,
@@ -28,6 +38,7 @@ class FavoriteManager {
     }
 
     removeFromFavorites(cafeId) {
+        console.log('Removing from favorites:', cafeId);
         const index = this.favorites.findIndex(fav => fav.id === cafeId);
         if (index > -1) {
             this.favorites.splice(index, 1);
@@ -80,6 +91,8 @@ const favoriteManager = new FavoriteManager();
 
 // Toggle favorite function
 function toggleFavorite(button, cafeId) {
+    console.log('Toggle favorite called for cafe ID:', cafeId);
+    
     if (!button || !cafeId) {
         console.error('Missing button or cafeId for toggleFavorite:', button, cafeId);
         return;
@@ -92,6 +105,7 @@ function toggleFavorite(button, cafeId) {
     if (window.caffyRuteApp && window.caffyRuteApp.cafes) {
         const cafe = window.caffyRuteApp.cafes.find(c => c.id === cafeId);
         if (cafe) {
+            console.log('Found cafe in global array:', cafe.name);
             cafeData = {
                 id: cafe.id,
                 name: cafe.name,
@@ -151,6 +165,7 @@ function toggleFavorite(button, cafeId) {
 
     if (favoriteManager.isFavorite(cafeId)) {
         // Remove from favorites
+        console.log('Removing from favorites:', cafeId);
         favoriteManager.removeFromFavorites(cafeId);
         
         // Update UI
@@ -160,9 +175,11 @@ function toggleFavorite(button, cafeId) {
         }
         button.classList.remove('favorited');
         
+        // Display the toast notification
         showToast('<i class="fas fa-heart-broken" style="color: #e91e63;"></i> Removed from favorites', 'error');
     } else {
         // Add to favorites
+        console.log('Adding to favorites:', cafeId, cafeData);
         favoriteManager.addToFavorites(cafeId, cafeData);
         
         // Update UI
@@ -172,16 +189,22 @@ function toggleFavorite(button, cafeId) {
         }
         button.classList.add('favorited');
         
+        // Display the toast notification
         showToast('<i class="fas fa-heart" style="color: #e91e63;"></i> Added to favorites!', 'success');
     }
 }
 
 // Toast notification function
 function showToast(message, type = 'success') {
+    console.log('Showing toast message:', message, type);
+    
     const toast = document.getElementById('toast');
     const toastMessage = document.getElementById('toast-message');
     
-    if (!toast || !toastMessage) return;
+    if (!toast || !toastMessage) {
+        console.error('Toast elements not found in DOM:', toast, toastMessage);
+        return;
+    }
     
     // Clear any existing timeout
     if (window.toastTimeout) {
