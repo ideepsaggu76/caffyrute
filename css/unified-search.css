@@ -1,0 +1,115 @@
+/* Unified Search Styles */
+
+.unified-search-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    background-color: white;
+    border-radius: 20px;
+    overflow: visible;
+}
+
+.unified-search-input {
+    flex: 1;
+    padding: 1.2rem 4.5rem 1.2rem 3rem;
+    border: none;
+    font-size: 1.1rem;
+    outline: none;
+    color: var(--text-dark);
+    border-radius: 20px;
+    width: 100%;
+}
+
+.unified-search-input::placeholder {
+    color: var(--text-light);
+}
+
+.location-icon {
+    position: absolute;
+    left: 1.2rem;
+    color: var(--gold-accent);
+    font-size: 1rem;
+    z-index: 2;
+}
+
+.search-btn {
+    position: absolute;
+    right: 0.5rem;
+    height: 42px;
+    width: 42px;
+    border: none;
+    background-color: var(--primary-brown);
+    color: white;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.search-btn:hover {
+    background-color: var(--secondary-brown);
+    transform: scale(1.05);
+}
+
+.search-btn i {
+    font-size: 1rem;
+}
+
+/* Location suggestions */
+.location-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border-radius: 0 0 20px 20px;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    z-index: 100;
+    max-height: 300px;
+    overflow-y: auto;
+    display: none;
+}
+
+.location-suggestions.visible {
+    display: block;
+}
+
+.suggestion-item {
+    padding: 0.8rem 1.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    transition: background 0.2s ease;
+}
+
+.suggestion-item:hover,
+.suggestion-item.highlighted {
+    background-color: #f5f5f5;
+}
+
+.suggestion-icon {
+    margin-right: 10px;
+    color: var(--gold-accent);
+    font-size: 0.9rem;
+}
+
+.suggestion-text {
+    font-size: 0.95rem;
+    color: var(--text-dark);
+}
+
+.suggestion-loading {
+    padding: 1rem;
+    text-align: center;
+    color: var(--text-medium);
+    font-size: 0.9rem;
+}
+
+.current-location-btn {
+    border-top: 1px solid #f0f0f0;
+    font-weight: 500;
+    color: var(--primary-brown);
+}

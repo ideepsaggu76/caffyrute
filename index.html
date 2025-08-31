@@ -16,6 +16,7 @@
     <link rel="stylesheet" href="css/home.css">
     <link rel="stylesheet" href="css/google-maps.css">
     <link rel="stylesheet" href="css/fallback-styles.css">
+    <link rel="stylesheet" href="css/unified-search.css">
     <link rel="stylesheet" href="css/fixes.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -67,26 +68,17 @@
             <h1>Find Your Perfect Café</h1>
             <p>Discover amazing coffee experiences near you with real-time location updates</p>
             <div class="search-container">
-                <div class="location-search-wrapper">
+                <div class="unified-search-wrapper">
                     <input type="text" 
-                           id="location-input" 
-                           placeholder="Enter your location..." 
-                           class="location-input"
+                           id="unified-search" 
+                           placeholder="Enter location or café name..." 
+                           class="unified-search-input"
                            autocomplete="off">
                     <i class="fas fa-map-marker-alt location-icon"></i>
-                    <div class="location-suggestions" id="location-suggestions"></div>
-                </div>
-                <div class="search-divider">
-                    <span>or</span>
-                </div>
-                <div class="cafe-search-wrapper">
-                    <input type="text" 
-                           id="cafe-search" 
-                           placeholder="Search cafés..." 
-                           class="search-input">
-                    <button class="search-btn" id="cafe-search-btn">
+                    <button class="search-btn" id="unified-search-btn">
                         <i class="fas fa-search"></i>
                     </button>
+                    <div class="location-suggestions" id="location-suggestions"></div>
                 </div>
             </div>
             <div class="filter-buttons">

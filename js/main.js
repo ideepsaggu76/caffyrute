@@ -496,43 +496,28 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Initialize search functionality
 function initSearchFunctionality() {
-    const cafeSearchInput = document.getElementById('cafe-search');
-    const cafeSearchBtn = document.getElementById('cafe-search-btn');
-    const locationInput = document.getElementById('location-input');
+    const unifiedSearchInput = document.getElementById('unified-search');
+    const unifiedSearchBtn = document.getElementById('unified-search-btn');
     
-    if (cafeSearchBtn && cafeSearchInput) {
-        // Cafe search button click
-        cafeSearchBtn.addEventListener('click', function(e) {
+    if (unifiedSearchBtn && unifiedSearchInput) {
+        // Unified search button click
+        unifiedSearchBtn.addEventListener('click', function(e) {
             e.preventDefault();
-            const query = cafeSearchInput.value.trim();
+            const query = unifiedSearchInput.value.trim();
             if (query && window.caffyRuteApp) {
-                console.log('Searching for cafes:', query);
-                window.caffyRuteApp.searchCafes(query);
+                console.log('Unified search for:', query);
+                window.caffyRuteApp.unifiedSearch(query);
                 showToast('🔍 Searching for: ' + query, 'success');
             } else if (query) {
                 showToast('🔄 Loading map services...', 'loading');
             }
         });
         
-        // Cafe search enter key
-        cafeSearchInput.addEventListener('keypress', function(e) {
+        // Unified search enter key
+        unifiedSearchInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                cafeSearchBtn.click();
-            }
-        });
-    }
-    
-    // Location input enter key
-    if (locationInput) {
-        locationInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                const query = locationInput.value.trim();
-                if (query && window.caffyRuteApp) {
-                    window.caffyRuteApp.searchLocationByName(query);
-                    showToast('📍 Searching location: ' + query, 'success');
-                }
+                unifiedSearchBtn.click();
             }
         });
     }

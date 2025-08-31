@@ -12,6 +12,7 @@ class CaffyRuteGoogleMaps {
         this.currentSearchLocation = null;
         this.autocompleteService = null;
         this.placesService = null;
+        this.geocoder = null;
         this.isInitialized = false;
         
         console.log('CaffyRuteGoogleMaps initialized with API key');
@@ -23,6 +24,7 @@ class CaffyRuteGoogleMaps {
             try {
                 this.autocompleteService = new google.maps.places.AutocompleteService();
                 this.placesService = new google.maps.places.PlacesService(document.createElement('div'));
+                this.geocoder = new google.maps.Geocoder();
                 this.isInitialized = true;
                 console.log('Google Maps services initialized successfully');
                 
@@ -39,22 +41,22 @@ class CaffyRuteGoogleMaps {
     
     // Initialize location search with autocomplete
     initLocationSearch() {
-        console.log('Initializing location search...');
-        const locationInput = document.getElementById('location-input');
+        console.log('Initializing unified search...');
+        const unifiedSearch = document.getElementById('unified-search');
         const suggestionsContainer = document.getElementById('location-suggestions');
         
-        if (!locationInput || !suggestionsContainer) {
-            console.warn('Location input or suggestions container not found');
+        if (!unifiedSearch || !suggestionsContainer) {
+            console.warn('Unified search or suggestions container not found');
             return;
         }
 
-        console.log('Location search elements found, setting up event listeners');
+        console.log('Unified search elements found, setting up event listeners');
         
         let searchTimeout;
         let selectedIndex = -1;
         
         // Input event handler with debouncing
-        locationInput.addEventListener('input', (e) => {
+        unifiedSearch.addEventListener('input', (e) => {
             const query = e.target.value.trim();
             clearTimeout(searchTimeout);
             
@@ -69,15 +71,15 @@ class CaffyRuteGoogleMaps {
         });
         
         // Focus event to show suggestions
-        locationInput.addEventListener('focus', () => {
-            const query = locationInput.value.trim();
+        unifiedSearch.addEventListener('focus', () => {
+            const query = unifiedSearch.value.trim();
             if (query.length >= 2) {
                 this.searchLocationSuggestions(query, suggestionsContainer);
             }
         });
         
         // Keyboard navigation
-        locationInput.addEventListener('keydown', (e) => {
+        unifiedSearch.addEventListener('keydown', (e) => {
             const suggestions = suggestionsContainer.querySelectorAll('.suggestion-item:not(.current-location-btn)');
             
             switch(e.key) {
@@ -97,29 +99,29 @@ class CaffyRuteGoogleMaps {
                         this.selectLocation(suggestions[selectedIndex]);
                     } else {
                         // If no suggestion selected, search directly
-                        const query = locationInput.value.trim();
+                        const query = unifiedSearch.value.trim();
                         if (query) {
-                            console.log('Searching location directly:', query);
-                            this.searchLocationByName(query);
+                            console.log('Searching directly with unified search:', query);
+                            this.unifiedSearch(query);
                             this.hideSuggestions();
                         }
                     }
                     break;
                 case 'Escape':
                     this.hideSuggestions();
-                    locationInput.blur();
+                    unifiedSearch.blur();
                     break;
             }
         });
         
         // Hide suggestions when clicking outside
         document.addEventListener('click', (e) => {
-            if (!locationInput.contains(e.target) && !suggestionsContainer.contains(e.target)) {
+            if (!unifiedSearch.contains(e.target) && !suggestionsContainer.contains(e.target)) {
                 this.hideSuggestions();
             }
         });
         
-        console.log('Location search initialization completed');
+        console.log('Unified search initialization completed');
     }
     
     // Search for location suggestions
@@ -268,7 +270,7 @@ class CaffyRuteGoogleMaps {
     
     // Select a location from suggestions
     selectLocation(suggestionElement) {
-        const locationInput = document.getElementById('location-input');
+        const unifiedSearch = document.getElementById('unified-search');
         const placeId = suggestionElement.getAttribute('data-place-id');
         const query = suggestionElement.getAttribute('data-query');
         
@@ -281,13 +283,13 @@ class CaffyRuteGoogleMaps {
                 if (status === google.maps.places.PlacesServiceStatus.OK) {
                     const location = place.geometry.location;
                     this.setSearchLocation(location.lat(), location.lng(), place.formatted_address);
-                    locationInput.value = place.formatted_address;
+                    unifiedSearch.value = place.formatted_address;
                 }
             });
         } else if (query) {
             // Basic search for the query
             this.searchLocationByName(query);
-            locationInput.value = query;
+            unifiedSearch.value = query;
         }
         
         this.hideSuggestions();
@@ -1625,6 +1627,104 @@ class CaffyRuteGoogleMaps {
                 this.showError('No cafes found matching your search.');
             }
         });
+    }
+    
+    // Unified search - first tries location search, then name search
+    unifiedSearch(query) {
+        console.log('Performing unified search for:', query);
+        this.showLoading(`Searching for "${query}"...`);
+        
+        // First attempt: Try to geocode as a location
+        this.geocoder.geocode({ address: query }, (results, status) => {
+            if (status === google.maps.GeocoderStatus.OK && results.length > 0) {
+                console.log('Location found, searching cafes nearby');
+                const location = results[0].geometry.location;
+                this.userLocation = location;
+                
+                // Update map center
+                if (this.map) {
+                    this.map.setCenter(location);
+                    this.map.setZoom(14);
+                }
+                
+                // Add marker for the location
+                this.addLocationMarker(location);
+                
+                // Search for cafes near this location
+                this.searchNearbyCafes();
+                
+                // Also search for cafes with the name matching the query
+                this.searchCafesByName(query);
+            } else {
+                console.log('Not found as location, searching as cafe name');
+                // Second attempt: Search for cafes with this name
+                this.searchCafesByName(query);
+            }
+        });
+    }
+    
+    // Search for cafes by name
+    searchCafesByName(query) {
+        if (!this.userLocation) {
+            console.warn('User location not set for cafe name search');
+            this.hideLoading();
+            this.showError('Please allow location access or enter a specific location first.');
+            return;
+        }
+        
+        this.searchCafes(query);
+    }
+    
+    // Add a marker for the selected location
+    addLocationMarker(location) {
+        // Clear existing location markers
+        this.clearLocationMarkers();
+        
+        if (!this.map) return;
+        
+        // Create a marker for the location
+        const marker = new google.maps.Marker({
+            position: location,
+            map: this.map,
+            icon: {
+                path: google.maps.SymbolPath.CIRCLE,
+                scale: 12,
+                fillColor: '#4285F4',
+                fillOpacity: 1,
+                strokeColor: '#ffffff',
+                strokeWeight: 2,
+            },
+            animation: google.maps.Animation.DROP,
+            title: 'Search Location'
+        });
+        
+        // Store the marker
+        this.locationMarker = marker;
+        
+        // Create a circle to show the search radius
+        this.locationRadius = new google.maps.Circle({
+            map: this.map,
+            center: location,
+            radius: 5000, // 5km initial radius
+            strokeColor: '#4285F4',
+            strokeOpacity: 0.8,
+            strokeWeight: 2,
+            fillColor: '#4285F4',
+            fillOpacity: 0.1
+        });
+    }
+    
+    // Clear location markers
+    clearLocationMarkers() {
+        if (this.locationMarker) {
+            this.locationMarker.setMap(null);
+            this.locationMarker = null;
+        }
+        
+        if (this.locationRadius) {
+            this.locationRadius.setMap(null);
+            this.locationRadius = null;
+        }
     }
 }
 
