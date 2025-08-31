@@ -378,6 +378,13 @@ class CaffyRuteGoogleMaps {
         try {
             console.log('Initializing Google Maps...');
             
+            if (!window.google || !window.google.maps) {
+                console.error('Google Maps API not loaded');
+                this.showError('Google Maps API failed to load. Please check your connection and API key.');
+                this.hideLoading();
+                return;
+            }
+            
             // Initialize services first
             this.initializeServices();
             
@@ -394,6 +401,13 @@ class CaffyRuteGoogleMaps {
             // Initialize Places service
             this.service = new google.maps.places.PlacesService(this.map);
             
+            if (!this.service) {
+                console.error('Failed to initialize Places service');
+                this.showError('Google Maps Places service failed to initialize.');
+                this.hideLoading();
+                return;
+            }
+            
             // Search for nearby cafes
             this.searchNearbyCafes();
             
@@ -402,6 +416,7 @@ class CaffyRuteGoogleMaps {
         } catch (error) {
             console.error('Error initializing map:', error);
             this.showError('Unable to load map. Please check your internet connection.');
+            this.hideLoading();
         }
     }
 
@@ -441,6 +456,13 @@ class CaffyRuteGoogleMaps {
     searchNearbyCafes(radius = 5000) { // Increased radius to find more results
         console.log('Searching for cafes with location:', this.userLocation);
         
+        if (!this.service) {
+            console.error('Places service not initialized');
+            this.showError('Google Maps service is not initialized. Please reload the page.');
+            this.hideLoading();
+            return;
+        }
+        
         const request = {
             location: this.userLocation,
             radius: radius,
@@ -455,26 +477,45 @@ class CaffyRuteGoogleMaps {
 
         console.log('Making Places API request:', request);
 
-        this.service.nearbySearch(request, (results, status) => {
-            console.log('Places API response:', status, results);
-            
-            if (status === google.maps.places.PlacesServiceStatus.OK) {
-                if (results.length === 0) {
-                    console.log('No results found, trying broader search...');
-                    this.searchWithAlternativeTerms(radius);
-                    return;
-                }
+        try {
+            this.service.nearbySearch(request, (results, status) => {
+                console.log('Places API response status:', status);
+                console.log('Places API response length:', results ? results.length : 0);
                 
-                // Quick filter and process immediately
-                const filteredResults = this.quickFilterCafes(results);
-                console.log('Filtered results:', filteredResults.length);
-                this.processCafeResults(filteredResults);
-            } else {
-                console.error('Places search failed:', status);
-                this.showError('Unable to find nearby cafes. Please try again.');
-                this.hideLoading();
-            }
-        });
+                if (status === google.maps.places.PlacesServiceStatus.OK) {
+                    if (!results || results.length === 0) {
+                        console.log('No results found, trying broader search...');
+                        this.searchWithAlternativeTerms(radius);
+                        return;
+                    }
+                    
+                    // Log the first result to see what data we're getting
+                    if (results.length > 0) {
+                        console.log('First result example:', JSON.stringify({
+                            name: results[0].name,
+                            place_id: results[0].place_id,
+                            types: results[0].types,
+                            vicinity: results[0].vicinity
+                        }));
+                    }
+                    
+                    // Quick filter and process immediately
+                    const filteredResults = this.quickFilterCafes(results);
+                    console.log('Filtered results count:', filteredResults.length);
+                    this.processCafeResults(filteredResults);
+                } else {
+                    console.error('Places search failed:', status);
+                    this.showError('Unable to find nearby cafes. Please try again.');
+                    this.hideLoading();
+                    this.displayCafes(); // Will show "No cafes found" message
+                }
+            });
+        } catch (error) {
+            console.error('Error in nearbySearch:', error);
+            this.showError('Error searching for cafes. Please try again.');
+            this.hideLoading();
+            this.displayCafes(); // Will show "No cafes found" message
+        }
     }
     
     // Alternative search terms if main search fails
@@ -546,6 +587,16 @@ class CaffyRuteGoogleMaps {
         // Show loading state immediately
         this.showLoading();
         
+        if (!results || results.length === 0) {
+            console.log('No results found in processCafeResults');
+            this.hideLoading();
+            this.cafes = [];
+            this.displayCafes(); // This will now handle empty results
+            return;
+        }
+        
+        console.log('Processing cafe results:', results.length);
+        
         // Limit results for faster processing (show top 15 closest)
         const limitedResults = results.slice(0, 15);
         
@@ -564,11 +615,19 @@ class CaffyRuteGoogleMaps {
             );
             
             this.cafes = firstBatch.filter(cafe => cafe !== null);
-            this.sortCafesByDistance();
+            console.log('First batch processed:', this.cafes.length);
             
-            // Display first results immediately
-            this.displayCafes();
-            this.addMapMarkers();
+            if (this.cafes.length > 0) {
+                this.sortCafesByDistance();
+                
+                // Display first results immediately
+                this.displayCafes();
+                this.addMapMarkers();
+            } else {
+                console.log('No valid cafes in first batch');
+                this.displayCafes(); // Will show "No cafes found" message
+            }
+            
             this.hideLoading();
             
             // Process remaining batches in background
@@ -580,6 +639,7 @@ class CaffyRuteGoogleMaps {
             console.error('Error processing cafe results:', error);
             this.showError('Error loading cafe details. Please try again.');
             this.hideLoading();
+            this.displayCafes(); // Will show "No cafes found" message
         }
     }
     
@@ -611,34 +671,70 @@ class CaffyRuteGoogleMaps {
     // Quick place details with essential info only
     getPlaceDetailsQuick(place) {
         return new Promise((resolve) => {
-            // Use basic place data first for immediate display
-            const basicCafe = {
-                id: place.place_id,
-                name: place.name,
-                rating: place.rating || 0,
-                reviewCount: place.user_ratings_total || 0,
-                priceLevel: place.price_level || 2,
-                address: place.vicinity || place.formatted_address || 'Address not available',
-                location: {
-                    lat: place.geometry.location.lat(),
-                    lng: place.geometry.location.lng()
-                },
-                distance: this.calculateDistance(
-                    this.userLocation.lat, this.userLocation.lng,
-                    place.geometry.location.lat(), place.geometry.location.lng()
-                ),
-                isOpen: place.opening_hours ? place.opening_hours.isOpen() : null,
-                photos: place.photos ? [{
-                    url: place.photos[0].getUrl({ maxWidth: 300, maxHeight: 200 })
-                }] : [],
-                businessStatus: place.business_status,
-                types: place.types || [],
-                features: this.extractBasicFeatures(place),
-                // Placeholder for detailed data
-                detailsLoaded: false
-            };
-            
-            resolve(basicCafe);
+            try {
+                // Handle potential issues with photos
+                let photoUrl = '';
+                try {
+                    if (place.photos && place.photos.length > 0) {
+                        photoUrl = place.photos[0].getUrl({ maxWidth: 300, maxHeight: 200 });
+                    }
+                } catch (photoError) {
+                    console.warn('Error getting photo URL:', photoError);
+                    photoUrl = 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=300&h=200&fit=crop';
+                }
+                
+                // Use basic place data first for immediate display
+                const basicCafe = {
+                    id: place.place_id,
+                    name: place.name,
+                    rating: place.rating || 0,
+                    reviewCount: place.user_ratings_total || 0,
+                    priceLevel: place.price_level || 2,
+                    address: place.vicinity || place.formatted_address || 'Address not available',
+                    location: {
+                        lat: place.geometry.location.lat(),
+                        lng: place.geometry.location.lng()
+                    },
+                    distance: this.calculateDistance(
+                        this.userLocation.lat, this.userLocation.lng,
+                        place.geometry.location.lat(), place.geometry.location.lng()
+                    ),
+                    isOpen: place.opening_hours ? place.opening_hours.isOpen() : null,
+                    photos: photoUrl ? [{ url: photoUrl }] : [],
+                    businessStatus: place.business_status,
+                    types: place.types || [],
+                    features: this.extractBasicFeatures(place),
+                    // These were missing in the original method
+                    openingHours: [],
+                    reviews: [],
+                    // Placeholder for detailed data
+                    detailsLoaded: false
+                };
+                
+                resolve(basicCafe);
+            } catch (error) {
+                console.error('Error processing place details:', error, place);
+                // Create a minimal cafe object with fallback values
+                resolve({
+                    id: place.place_id || 'unknown',
+                    name: place.name || 'Café',
+                    rating: 0,
+                    reviewCount: 0,
+                    priceLevel: 2,
+                    address: 'Address not available',
+                    location: {
+                        lat: place.geometry ? place.geometry.location.lat() : this.userLocation.lat,
+                        lng: place.geometry ? place.geometry.location.lng() : this.userLocation.lng
+                    },
+                    distance: 0,
+                    isOpen: null,
+                    photos: [],
+                    features: [{ icon: 'fas fa-coffee', text: 'Coffee' }],
+                    openingHours: [],
+                    reviews: [],
+                    detailsLoaded: false
+                });
+            }
         });
     }
     
@@ -805,8 +901,32 @@ class CaffyRuteGoogleMaps {
 
     // Optimized display cafes in the UI
     displayCafes() {
+        console.log('Displaying cafes:', this.cafes.length);
+        
         const cafeList = document.querySelector('.cafe-list');
-        if (!cafeList) return;
+        if (!cafeList) {
+            console.error('Cafe list element not found');
+            return;
+        }
+
+        // Handle empty results
+        if (!this.cafes || this.cafes.length === 0) {
+            cafeList.innerHTML = `
+                <div class="no-results">
+                    <i class="fas fa-coffee"></i>
+                    <p>No cafes found in this area. Try changing your location or search terms.</p>
+                </div>
+            `;
+            
+            // Update cafe count
+            const cafeCount = document.querySelector('.cafe-count');
+            if (cafeCount) {
+                cafeCount.textContent = '0 cafes found';
+            }
+            
+            this.hideLoading();
+            return;
+        }
 
         // Clear loading placeholder if exists
         const loadingPlaceholder = cafeList.querySelector('.loading-placeholder');
@@ -820,9 +940,15 @@ class CaffyRuteGoogleMaps {
         // Limit initial render to first 8 cafes for speed
         const visibleCafes = this.cafes.slice(0, 8);
         
+        console.log('Rendering cafes:', visibleCafes.length);
+        
         visibleCafes.forEach((cafe, index) => {
-            const cafeElement = this.createOptimizedCafeElement(cafe, index);
-            fragment.appendChild(cafeElement);
+            try {
+                const cafeElement = this.createOptimizedCafeElement(cafe, index);
+                fragment.appendChild(cafeElement);
+            } catch (error) {
+                console.error('Error creating cafe element:', error);
+            }
         });
 
         // Clear and append efficiently
@@ -859,50 +985,65 @@ class CaffyRuteGoogleMaps {
 
     // Create optimized cafe element for faster rendering
     createOptimizedCafeElement(cafe, index) {
-        const cafeDiv = document.createElement('div');
-        cafeDiv.className = 'cafe-item';
-        cafeDiv.setAttribute('data-cafe-id', cafe.id);
-        
-        // Optimized image URL for faster loading
-        const imageUrl = cafe.photos.length > 0 
-            ? cafe.photos[0].url.replace('400', '200').replace('300', '150')
-            : 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=200&h=150&fit=crop&q=80';
-        
-        const stars = this.generateStars(cafe.rating);
-        const priceSymbols = '$'.repeat(Math.max(1, cafe.priceLevel || 2));
-        
-        const statusClass = cafe.isOpen === true ? 'open' : (cafe.isOpen === false ? 'closed' : 'unknown');
-        const statusText = cafe.isOpen === true ? 'Open' : (cafe.isOpen === false ? 'Closed' : 'Unknown');
-
-        // Simplified, faster HTML structure
-        cafeDiv.innerHTML = `
-            <div class="cafe-image">
-                <img src="${imageUrl}" alt="${cafe.name}" loading="lazy">
-            </div>
-            <div class="cafe-details">
-                <h3>${cafe.name}</h3>
-                <div class="cafe-rating">
-                    <div class="stars">${stars}</div>
-                    <span class="rating-text">${cafe.rating.toFixed(1)} (${cafe.reviewCount})</span>
-                </div>
-                <div class="cafe-meta">
-                    <span class="distance"><i class="fas fa-map-marker-alt"></i> ${cafe.distance.toFixed(1)} km</span>
-                    <span class="price"><i class="fas fa-dollar-sign"></i> ${priceSymbols}</span>
-                    <span class="status ${statusClass}"><i class="fas fa-clock"></i> ${statusText}</span>
-                </div>
-            </div>
-            <div class="cafe-actions">
-                <button class="heart-btn" onclick="toggleFavorite(this, '${cafe.id}')">
-                    <i class="far fa-heart"></i>
-                </button>
-                <button class="btn-secondary" onclick="window.caffyRuteApp.showQuickDetails('${cafe.id}')">Details</button>
-                <button class="btn-primary" onclick="window.caffyRuteApp.getDirections(${cafe.location.lat}, ${cafe.location.lng})">Directions</button>
-            </div>
-        `;
-
-        return cafeDiv;
-    }
+        try {
+            const cafeDiv = document.createElement('div');
+            cafeDiv.className = 'cafe-item';
+            cafeDiv.setAttribute('data-cafe-id', cafe.id);
+            
+            // Safely handle image URL
+            let imageUrl = 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=200&h=150&fit=crop&q=80';
+            if (cafe.photos && cafe.photos.length > 0 && cafe.photos[0].url) {
+                imageUrl = cafe.photos[0].url.replace('400', '200').replace('300', '150');
+            }
+            
+            const stars = this.generateStars(cafe.rating || 0);
+            const priceSymbols = '$'.repeat(Math.max(1, cafe.priceLevel || 2));
+            
+            const statusClass = cafe.isOpen === true ? 'open' : (cafe.isOpen === false ? 'closed' : 'unknown');
+            const statusText = cafe.isOpen === true ? 'Open' : (cafe.isOpen === false ? 'Closed' : 'Unknown');
     
+            // Simplified, faster HTML structure
+            cafeDiv.innerHTML = `
+                <div class="cafe-image">
+                    <img src="${imageUrl}" alt="${cafe.name}" loading="lazy">
+                </div>
+                <div class="cafe-details">
+                    <h3>${cafe.name}</h3>
+                    <div class="cafe-rating">
+                        <div class="stars">${stars}</div>
+                        <span class="rating-text">${(cafe.rating || 0).toFixed(1)} (${cafe.reviewCount || 0})</span>
+                    </div>
+                    <div class="cafe-meta">
+                        <span class="distance"><i class="fas fa-map-marker-alt"></i> ${(cafe.distance || 0).toFixed(1)} km</span>
+                        <span class="price"><i class="fas fa-dollar-sign"></i> ${priceSymbols}</span>
+                        <span class="status ${statusClass}"><i class="fas fa-clock"></i> ${statusText}</span>
+                    </div>
+                </div>
+                <div class="cafe-actions">
+                    <button class="heart-btn" onclick="toggleFavorite(this, '${cafe.id}')">
+                        <i class="far fa-heart"></i>
+                    </button>
+                    <button class="btn-secondary" onclick="window.showCafeDetails('${cafe.id}')">Details</button>
+                    <button class="btn-primary" onclick="window.getDirections(${cafe.location.lat}, ${cafe.location.lng}, '${cafe.name}')">Directions</button>
+                </div>
+            `;
+    
+            return cafeDiv;
+        } catch (error) {
+            console.error('Error creating cafe element:', error, cafe);
+            // Create a minimal fallback element
+            const fallbackDiv = document.createElement('div');
+            fallbackDiv.className = 'cafe-item';
+            fallbackDiv.innerHTML = `
+                <div class="cafe-details">
+                    <h3>${cafe ? cafe.name || 'Cafe' : 'Cafe'}</h3>
+                    <p>Details unavailable</p>
+                </div>
+            `;
+            return fallbackDiv;
+        }
+    }
+
     // Quick details modal for faster interaction
     showQuickDetails(cafeId) {
         const cafe = this.cafes.find(c => c.id === cafeId);
@@ -961,7 +1102,6 @@ class CaffyRuteGoogleMaps {
     getPriceLevel(level) {
         const levels = ['Free', '$', '$$', '$$$', '$$$$'];
         return levels[level] || '$$';
-    }
     }
 
     // Create cafe element HTML
@@ -1154,53 +1294,41 @@ class CaffyRuteGoogleMaps {
     
     // Show loading indicator
     showLoading() {
-        const loadingElement = document.getElementById('loading-cafes');
-        const cafeList = document.getElementById('cafe-list');
-        
-        if (loadingElement && cafeList) {
-            loadingElement.innerHTML = `
-                <div class="loading-spinner"></div>
-                <p>Finding the best cafés near you...</p>
-            `;
-            loadingElement.style.display = 'flex';
-            cafeList.style.display = 'none';
+        try {
+            const loadingElement = document.getElementById('loading-cafes');
+            const cafeList = document.getElementById('cafe-list');
+            
+            if (loadingElement && cafeList) {
+                loadingElement.innerHTML = `
+                    <div class="loading-spinner"></div>
+                    <p>Finding the best cafés near you...</p>
+                `;
+                loadingElement.style.display = 'flex';
+                cafeList.style.display = 'none';
+                console.log('Showing loading indicator');
+            } else {
+                console.warn('Loading or cafe list elements not found');
+            }
+        } catch (error) {
+            console.error('Error in showLoading:', error);
         }
     }
     
     // Hide loading indicator
     hideLoading() {
-        const loadingElement = document.getElementById('loading-cafes');
-        const cafeList = document.getElementById('cafe-list');
-        
-        if (loadingElement && cafeList) {
-            loadingElement.style.display = 'none';
-            cafeList.style.display = 'grid';
-        }
-    }
-    
-    // Show loading indicator
-    showLoading() {
-        const loadingElement = document.getElementById('loading-cafes');
-        const cafeList = document.getElementById('cafe-list');
-        
-        if (loadingElement && cafeList) {
-            loadingElement.innerHTML = `
-                <div class="loading-spinner"></div>
-                <p>Finding the best cafés near you...</p>
-            `;
-            loadingElement.style.display = 'flex';
-            cafeList.style.display = 'none';
-        }
-    }
-    
-    // Hide loading indicator
-    hideLoading() {
-        const loadingElement = document.getElementById('loading-cafes');
-        const cafeList = document.getElementById('cafe-list');
-        
-        if (loadingElement && cafeList) {
-            loadingElement.style.display = 'none';
-            cafeList.style.display = 'grid';
+        try {
+            const loadingElement = document.getElementById('loading-cafes');
+            const cafeList = document.getElementById('cafe-list');
+            
+            if (loadingElement && cafeList) {
+                loadingElement.style.display = 'none';
+                cafeList.style.display = 'grid';
+                console.log('Hiding loading indicator');
+            } else {
+                console.warn('Loading or cafe list elements not found');
+            }
+        } catch (error) {
+            console.error('Error in hideLoading:', error);
         }
     }
 
