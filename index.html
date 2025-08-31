@@ -14,6 +14,8 @@
     <meta name="keywords" content="cafes, coffee shops, location based, cafe finder, coffee near me, cafe reviews">
     <link rel="stylesheet" href="css/common.css">
     <link rel="stylesheet" href="css/home.css">
+    <link rel="stylesheet" href="css/google-maps.css">
+    <link rel="stylesheet" href="css/google-maps.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
@@ -81,14 +83,38 @@
     <!-- Café List Section -->
     <section class="cafe-list-section">
         <div class="container">
-            <h2>Nearby Cafés</h2>
+            <div class="section-header">
+                <h2>Nearby Cafés</h2>
+                <span class="cafe-count">Loading cafés...</span>
+            </div>
+            
+            <!-- Map Container -->
+            <div class="map-container" id="map-container">
+                <div id="map"></div>
+                <div class="map-toggle">
+                    <button id="toggle-map" class="btn-secondary">
+                        <i class="fas fa-map"></i> Show Map
+                    </button>
+                </div>
+            </div>
+            
             <div class="sort-filter-bar">
                 <div class="sort-options">
                     <label for="sort">Sort by:</label>
                     <select id="sort">
-                        <option value="distance">Distance</option>
                         <option value="rating">Rating</option>
+                        <option value="distance">Distance</option>
                         <option value="price">Price</option>
+                        <option value="reviews">Most Reviewed</option>
+                    </select>
+                </div>
+                <div class="filter-options">
+                    <label for="radius">Within:</label>
+                    <select id="radius">
+                        <option value="1000">1 km</option>
+                        <option value="3000" selected>3 km</option>
+                        <option value="5000">5 km</option>
+                        <option value="10000">10 km</option>
                     </select>
                 </div>
                 <div class="view-toggle">
@@ -101,115 +127,15 @@
                 </div>
             </div>
 
+            <!-- Loading State -->
+            <div class="loading-cafes" id="loading-cafes">
+                <div class="loading-spinner"></div>
+                <p>Finding the best cafés near you...</p>
+            </div>
+
             <!-- Café List Items -->
-            <div class="cafe-list">
-                <div class="cafe-item">
-                    <div class="cafe-image">
-                        <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=300&h=200&fit=crop" alt="Brew & Beans Café">
-                    </div>
-                    <div class="cafe-details">
-                        <h3>Brew & Beans Café</h3>
-                        <div class="cafe-rating">
-                            <div class="stars">
-                                <i class="fas fa-star"></i>
-                                <i class="fas fa-star"></i>
-                                <i class="fas fa-star"></i>
-                                <i class="fas fa-star"></i>
-                                <i class="fas fa-star-half-alt"></i>
-                            </div>
-                            <span class="rating-text">4.5 (234 reviews)</span>
-                        </div>
-                        <p class="cafe-description">Cozy café with artisanal coffee and fresh pastries. Perfect for work with free WiFi.</p>
-                        <div class="cafe-features">
-                            <span class="feature"><i class="fas fa-wifi"></i> WiFi</span>
-                            <span class="feature"><i class="fas fa-paw"></i> Pet Friendly</span>
-                            <span class="feature"><i class="fas fa-dollar-sign"></i> $$</span>
-                        </div>
-                        <div class="cafe-meta">
-                            <span class="distance"><i class="fas fa-map-marker-alt"></i> 0.3 km away</span>
-                            <span class="status open"><i class="fas fa-clock"></i> Open until 10 PM</span>
-                        </div>
-                    </div>
-                    <div class="cafe-actions">
-                        <button class="heart-btn" onclick="toggleFavorite(this, 'brew-beans')">
-                            <i class="far fa-heart"></i>
-                        </button>
-                        <button class="btn-secondary">View Details</button>
-                        <button class="btn-primary">Get Directions</button>
-                    </div>
-                </div>
-
-                <div class="cafe-item">
-                    <div class="cafe-image">
-                        <img src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=300&h=200&fit=crop" alt="Urban Grind">
-                    </div>
-                    <div class="cafe-details">
-                        <h3>Urban Grind</h3>
-                        <div class="cafe-rating">
-                            <div class="stars">
-                                <i class="fas fa-star"></i>
-                                <i class="fas fa-star"></i>
-                                <i class="fas fa-star"></i>
-                                <i class="fas fa-star"></i>
-                                <i class="far fa-star"></i>
-                            </div>
-                            <span class="rating-text">4.2 (156 reviews)</span>
-                        </div>
-                        <p class="cafe-description">Modern café with specialty coffee and healthy food options. Great for meetings.</p>
-                        <div class="cafe-features">
-                            <span class="feature"><i class="fas fa-wifi"></i> WiFi</span>
-                            <span class="feature"><i class="fas fa-utensils"></i> Full Menu</span>
-                            <span class="feature"><i class="fas fa-dollar-sign"></i> $$$</span>
-                        </div>
-                        <div class="cafe-meta">
-                            <span class="distance"><i class="fas fa-map-marker-alt"></i> 0.7 km away</span>
-                            <span class="status open"><i class="fas fa-clock"></i> Open until 9 PM</span>
-                        </div>
-                    </div>
-                    <div class="cafe-actions">
-                        <button class="heart-btn" onclick="toggleFavorite(this, 'urban-grind')">
-                            <i class="far fa-heart"></i>
-                        </button>
-                        <button class="btn-secondary">View Details</button>
-                        <button class="btn-primary">Get Directions</button>
-                    </div>
-                </div>
-
-                <div class="cafe-item">
-                    <div class="cafe-image">
-                        <img src="https://images.unsplash.com/photo-1521017432531-fbd92d768814?w=300&h=200&fit=crop" alt="Coffee Corner">
-                    </div>
-                    <div class="cafe-details">
-                        <h3>Coffee Corner</h3>
-                        <div class="cafe-rating">
-                            <div class="stars">
-                                <i class="fas fa-star"></i>
-                                <i class="fas fa-star"></i>
-                                <i class="fas fa-star"></i>
-                                <i class="fas fa-star"></i>
-                                <i class="fas fa-star"></i>
-                            </div>
-                            <span class="rating-text">4.8 (89 reviews)</span>
-                        </div>
-                        <p class="cafe-description">Small neighborhood café with the best espresso in town. Friendly atmosphere.</p>
-                        <div class="cafe-features">
-                            <span class="feature"><i class="fas fa-heart"></i> Local Favorite</span>
-                            <span class="feature"><i class="fas fa-leaf"></i> Organic</span>
-                            <span class="feature"><i class="fas fa-dollar-sign"></i> $$</span>
-                        </div>
-                        <div class="cafe-meta">
-                            <span class="distance"><i class="fas fa-map-marker-alt"></i> 1.2 km away</span>
-                            <span class="status closed"><i class="fas fa-clock"></i> Closed - Opens at 7 AM</span>
-                        </div>
-                    </div>
-                    <div class="cafe-actions">
-                        <button class="heart-btn" onclick="toggleFavorite(this, 'coffee-corner')">
-                            <i class="far fa-heart"></i>
-                        </button>
-                        <button class="btn-secondary">View Details</button>
-                        <button class="btn-primary">Get Directions</button>
-                    </div>
-                </div>
+            <div class="cafe-list" id="cafe-list">
+                <!-- Cafés will be dynamically loaded here -->
             </div>
         </div>
     </section>
@@ -266,6 +192,46 @@
     </footer>
 
     <script src="js/favorites.js"></script>
+    <script src="js/google-maps.js"></script>
     <script src="js/main.js"></script>
+    
+    <!-- Google Maps API -->
+    <script>
+        // Your Google Maps API Key
+        const GOOGLE_MAPS_API_KEY = 'AIzaSyAhJAse30TCMIK7-N9moQxk7akoW5nyB0I';
+        
+        // Initialize the app
+        window.caffyRuteApp = null;
+        
+        function initGoogleMaps() {
+            window.caffyRuteApp = new CaffyRuteGoogleMaps(GOOGLE_MAPS_API_KEY);
+            window.caffyRuteApp.initMap();
+        }
+        
+        // Load Google Maps API
+        function loadGoogleMapsAPI() {
+            const script = document.createElement('script');
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&callback=initGoogleMaps`;
+            script.async = true;
+            script.defer = true;
+            document.head.appendChild(script);
+        }
+        
+        // Start loading when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            // Show API key setup message if not configured
+            if (GOOGLE_MAPS_API_KEY === 'YOUR_GOOGLE_MAPS_API_KEY') {
+                document.getElementById('loading-cafes').innerHTML = `
+                    <div class="api-setup-notice">
+                        <h3><i class="fas fa-key"></i> API Key Required</h3>
+                        <p>To load real café data, please add your Google Maps API key to the script.</p>
+                        <p>Get your API key from: <a href="https://console.cloud.google.com/apis/credentials" target="_blank">Google Cloud Console</a></p>
+                    </div>
+                `;
+            } else {
+                loadGoogleMapsAPI();
+            }
+        });
+    </script>
 </body>
 </html>

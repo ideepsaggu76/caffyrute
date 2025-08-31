@@ -1,0 +1,510 @@
+/* Google Maps Integration Styles */
+
+/* Map Container */
+.map-container {
+    position: relative;
+    height: 0;
+    overflow: hidden;
+    border-radius: 15px;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 15px rgba(107, 68, 35, 0.1);
+    transition: height 0.3s ease;
+}
+
+.map-container.expanded {
+    height: 400px;
+}
+
+#map {
+    width: 100%;
+    height: 100%;
+    border-radius: 15px;
+}
+
+.map-toggle {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    z-index: 10;
+}
+
+#toggle-map {
+    background: white;
+    border: 2px solid var(--primary-brown);
+    color: var(--primary-brown);
+    padding: 0.7rem 1.2rem;
+    border-radius: 8px;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+#toggle-map:hover {
+    background: var(--primary-brown);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(107, 68, 35, 0.2);
+}
+
+/* Section Header */
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.cafe-count {
+    color: var(--text-medium);
+    font-weight: 500;
+    font-size: 1rem;
+}
+
+/* Enhanced Sort Filter Bar */
+.sort-filter-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    background: var(--cream);
+    border-radius: 15px;
+    margin-bottom: 2rem;
+    gap: 2rem;
+    flex-wrap: wrap;
+}
+
+.filter-options {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+}
+
+.filter-options label {
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.filter-options select {
+    padding: 0.6rem 1rem;
+    border: 2px solid var(--border-light);
+    border-radius: 8px;
+    background: white;
+    color: var(--text-dark);
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color 0.3s ease;
+}
+
+.filter-options select:focus {
+    outline: none;
+    border-color: var(--primary-brown);
+}
+
+/* Loading States */
+.loading-cafes {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    text-align: center;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid var(--cream);
+    border-top: 4px solid var(--primary-brown);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1rem;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.api-setup-notice {
+    background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
+    border: 2px solid #ffc107;
+    border-radius: 15px;
+    padding: 2rem;
+    text-align: center;
+    max-width: 500px;
+    margin: 2rem auto;
+}
+
+.api-setup-notice h3 {
+    color: #f57c00;
+    margin-bottom: 1rem;
+    font-size: 1.3rem;
+}
+
+.api-setup-notice p {
+    color: #e65100;
+    margin-bottom: 0.8rem;
+    line-height: 1.6;
+}
+
+.api-setup-notice a {
+    color: #d84315;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.api-setup-notice a:hover {
+    text-decoration: underline;
+}
+
+/* Café Modal Styles */
+.cafe-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    padding: 20px;
+    backdrop-filter: blur(5px);
+}
+
+.cafe-modal {
+    background: white;
+    border-radius: 20px;
+    max-width: 800px;
+    max-height: 90vh;
+    width: 100%;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: modalSlideUp 0.3s ease-out;
+}
+
+@keyframes modalSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(50px) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.cafe-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2rem 2rem 1rem;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.cafe-modal-header h2 {
+    color: var(--primary-brown);
+    font-size: 1.8rem;
+    margin: 0;
+}
+
+.close-modal {
+    background: none;
+    border: none;
+    font-size: 2rem;
+    color: var(--text-medium);
+    cursor: pointer;
+    padding: 0;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+.close-modal:hover {
+    background: var(--cream);
+    color: var(--primary-brown);
+}
+
+.cafe-modal-content {
+    padding: 2rem;
+}
+
+.cafe-images {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.cafe-images img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.cafe-info {
+    margin-bottom: 2rem;
+}
+
+.rating-large {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: var(--cream);
+    border-radius: 12px;
+}
+
+.rating-large .stars {
+    font-size: 1.2rem;
+}
+
+.rating-large span {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.cafe-info p {
+    margin: 0.8rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    color: var(--text-medium);
+}
+
+.cafe-info i {
+    color: var(--primary-brown);
+    width: 20px;
+}
+
+.cafe-info a {
+    color: var(--primary-brown);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.cafe-info a:hover {
+    text-decoration: underline;
+}
+
+.opening-hours {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 12px;
+    margin: 1.5rem 0;
+}
+
+.opening-hours h4 {
+    color: var(--primary-brown);
+    margin-bottom: 1rem;
+    font-size: 1.2rem;
+}
+
+.opening-hours p {
+    margin: 0.3rem 0;
+    font-size: 0.95rem;
+    font-family: 'Courier New', monospace;
+}
+
+.reviews {
+    margin-top: 2rem;
+}
+
+.reviews h4 {
+    color: var(--primary-brown);
+    margin-bottom: 1.5rem;
+    font-size: 1.2rem;
+}
+
+.review {
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    background: white;
+}
+
+.review-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.review-header img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.review-header div {
+    flex: 1;
+}
+
+.review-header strong {
+    display: block;
+    color: var(--text-dark);
+    font-size: 0.95rem;
+}
+
+.review-header .stars {
+    font-size: 0.8rem;
+    margin-top: 0.2rem;
+}
+
+.review-time {
+    color: var(--text-medium);
+    font-size: 0.85rem;
+}
+
+.review p {
+    color: var(--text-medium);
+    line-height: 1.6;
+    margin: 0;
+}
+
+.cafe-modal-actions {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem 2rem 2rem;
+    border-top: 1px solid var(--border-light);
+}
+
+.cafe-modal-actions button {
+    flex: 1;
+    padding: 1rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 12px;
+}
+
+/* Google Maps Info Window Custom Styles */
+.info-window {
+    max-width: 250px;
+    padding: 0;
+}
+
+.info-window img {
+    margin-bottom: 8px;
+}
+
+.info-window h3 {
+    margin: 8px 0 4px 0;
+    font-size: 16px;
+}
+
+.info-window .stars {
+    margin: 4px 0;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .map-container.expanded {
+        height: 300px;
+    }
+    
+    .map-toggle {
+        top: 10px;
+        right: 10px;
+    }
+    
+    #toggle-map {
+        padding: 0.6rem 1rem;
+        font-size: 0.9rem;
+    }
+    
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .sort-filter-bar {
+        flex-direction: column;
+        gap: 1rem;
+        padding: 1rem;
+    }
+    
+    .filter-options {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .cafe-modal {
+        margin: 10px;
+        max-height: 95vh;
+        border-radius: 15px;
+    }
+    
+    .cafe-modal-header {
+        padding: 1.5rem 1.5rem 1rem;
+    }
+    
+    .cafe-modal-header h2 {
+        font-size: 1.5rem;
+    }
+    
+    .cafe-modal-content {
+        padding: 1.5rem;
+    }
+    
+    .cafe-images {
+        grid-template-columns: 1fr;
+    }
+    
+    .rating-large {
+        flex-direction: column;
+        text-align: center;
+        gap: 0.5rem;
+    }
+    
+    .cafe-modal-actions {
+        flex-direction: column;
+        padding: 1rem 1.5rem 1.5rem;
+    }
+    
+    .info-window {
+        max-width: 200px;
+    }
+}
+
+@media (max-width: 480px) {
+    .map-container.expanded {
+        height: 250px;
+        border-radius: 10px;
+    }
+    
+    .cafe-modal {
+        border-radius: 10px;
+    }
+    
+    .opening-hours,
+    .review {
+        padding: 1rem;
+    }
+    
+    .review-header {
+        flex-wrap: wrap;
+        gap: 0.8rem;
+    }
+    
+    .loading-cafes {
+        padding: 2rem 1rem;
+    }
+    
+    .api-setup-notice {
+        padding: 1.5rem;
+        margin: 1rem;
+    }
+}
