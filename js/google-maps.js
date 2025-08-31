@@ -14,6 +14,16 @@ class CaffyRuteGoogleMaps {
         this.placesService = null;
         this.geocoder = null;
         this.isInitialized = false;
+        this.useCache = true; // Enable caching by default
+        
+        // Try to restore last location from cache
+        if (window.cacheManager) {
+            const lastLocation = window.cacheManager.getLastLocation();
+            if (lastLocation) {
+                console.log('Restored last location from cache:', lastLocation);
+                this.userLocation = lastLocation;
+            }
+        }
         
         console.log('CaffyRuteGoogleMaps initialized with API key');
     }
@@ -393,12 +403,32 @@ class CaffyRuteGoogleMaps {
             // Show loading message
             this.showLoading('Getting your location and finding nearby cafés...');
             
-            // Get user's current location
-            await this.getCurrentLocation();
+            // Check for cached results first before getting location
+            let cachedCafes = null;
+            let cachedLocation = null;
             
-            // Create map
+            // Try to get cached location and results
+            if (window.cacheManager && this.useCache) {
+                cachedLocation = window.cacheManager.getLastLocation();
+                if (cachedLocation) {
+                    console.log('Using cached location:', cachedLocation);
+                    // Use the cached location initially
+                    this.userLocation = cachedLocation;
+                    
+                    // Try to get cached cafe results for this location
+                    cachedCafes = window.cacheManager.getSearchResults(cachedLocation, 2000);
+                    if (cachedCafes && cachedCafes.length > 0) {
+                        console.log('Using cached cafes:', cachedCafes.length);
+                    }
+                }
+            }
+            
+            // Get user's current location (in background, don't await)
+            const locationPromise = this.getCurrentLocation();
+            
+            // Create map using cached location if available, or default location
             this.map = new google.maps.Map(document.getElementById('map'), {
-                center: this.userLocation,
+                center: this.userLocation || { lat: 28.6139, lng: 77.2090 }, // Default to New Delhi if no cached location
                 zoom: 15,
                 styles: this.getMapStyles()
             });
@@ -413,32 +443,47 @@ class CaffyRuteGoogleMaps {
                 return;
             }
             
-            // Add marker for user's location
-            this.addLocationMarker(this.userLocation);
-            
-            // Automatically search for nearby cafes on page load
-            console.log('Starting automatic search for nearby cafes...');
-            
-            // Ensure we have a user location before searching
-            if (!this.userLocation) {
-                console.warn('User location not set yet, waiting before searching for cafes...');
-                // Wait a bit longer for location to be retrieved
-                setTimeout(() => {
-                    console.log('Retrying cafe search with location:', this.userLocation);
-                    if (this.userLocation) {
-                        this.searchNearbyCafes(1500);  // 1.5km initial radius for faster results
-                    } else {
-                        console.warn('Still no user location, using default location');
-                        this.userLocation = { lat: 28.6139, lng: 77.2090 }; // Default to New Delhi
+            // If we have cached cafes, show them immediately
+            if (cachedCafes && cachedCafes.length > 0) {
+                this.cafes = cachedCafes;
+                this.sortCafesByDistance();
+                this.addLocationMarker(this.userLocation);
+                this.displayCafes();
+                this.addMapMarkers();
+                console.log('Displayed cached cafes immediately');
+                
+                // Still update location and refresh results in the background
+                locationPromise.then(() => {
+                    // Only search again if the location has changed significantly
+                    if (!cachedLocation || 
+                        this.calculateDistance(
+                            cachedLocation.lat, 
+                            cachedLocation.lng, 
+                            this.userLocation.lat, 
+                            this.userLocation.lng
+                        ) > 0.5) { // If moved more than 0.5km
+                        console.log('Location changed significantly, refreshing results');
                         this.searchNearbyCafes(1500);
                     }
-                }, 1000); // Wait longer for location to be retrieved
+                });
             } else {
-                // We already have location, proceed with search after a short delay
-                setTimeout(() => {
-                    console.log('Searching for cafes now with location:', this.userLocation);
-                    this.searchNearbyCafes(1500);  // 1.5km initial radius for faster results
-                }, 500);
+                // No cached results, wait for location and then search
+                await locationPromise;
+                
+                // Add marker for user's location
+                this.addLocationMarker(this.userLocation);
+                
+                // Automatically search for nearby cafes on page load
+                console.log('Starting automatic search for nearby cafes...');
+                
+                // Ensure we have a user location before searching
+                if (!this.userLocation) {
+                    console.warn('User location not set, using default location');
+                    this.userLocation = { lat: 28.6139, lng: 77.2090 }; // Default to New Delhi
+                }
+                
+                // Start search immediately - no need to wait
+                this.searchNearbyCafes(1500);
             }
             
             console.log('Google Maps initialization completed');
@@ -496,6 +541,11 @@ class CaffyRuteGoogleMaps {
             return;
         }
         
+        // Save current location to cache
+        if (window.cacheManager) {
+            window.cacheManager.saveLastLocation(this.userLocation);
+        }
+        
         if (!this.service) {
             console.error('Places service not initialized');
             this.showError('Google Maps service is not initialized. Please reload the page.');
@@ -507,6 +557,21 @@ class CaffyRuteGoogleMaps {
         // Clear any existing timeout to ensure multiple searches don't overlap
         if (this.searchTimeout) {
             clearTimeout(this.searchTimeout);
+        }
+        
+        // Try to get results from cache first if caching is enabled
+        if (this.useCache && window.cacheManager && attemptCount === 0) {
+            const cachedResults = window.cacheManager.getSearchResults(this.userLocation, radius);
+            if (cachedResults && cachedResults.length > 0) {
+                console.log('Using cached results for this location:', cachedResults.length, 'cafes');
+                this.cafes = cachedResults;
+                this.sortCafesByDistance(); // Re-sort based on current location
+                this.displayCafes();
+                this.addMapMarkers();
+                return;
+            } else {
+                console.log('No cached results available, performing search');
+            }
         }
         
         // Update loading message with radius information
@@ -925,6 +990,12 @@ class CaffyRuteGoogleMaps {
                 // Display first results immediately
                 this.displayCafes();
                 this.addMapMarkers();
+                
+                // Cache first batch of results
+                if (window.cacheManager && this.useCache) {
+                    window.cacheManager.cacheCafes(this.cafes);
+                    window.cacheManager.cacheSearchResults(this.userLocation, radius, this.cafes);
+                }
                 
                 // Update section header to show we're displaying nearby cafés
                 const sectionHeader = document.querySelector('.section-header h2');
@@ -1522,13 +1593,19 @@ class CaffyRuteGoogleMaps {
             cafeDiv.className = cafe.isFallbackResult ? 'cafe-item fallback-result' : 'cafe-item';
             cafeDiv.setAttribute('data-cafe-id', cafe.id || `unknown-${index}`);
             
-            // Safely handle image URL with better fallbacks
-            let imageUrl = 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=200&h=150&fit=crop&q=80';
+            // Use placeholder image initially
+            let imageUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2VlZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIGZpbGw9IiM5OTkiPkxvYWRpbmcgaW1hZ2UuLi48L3RleHQ+PC9zdmc+';
+            
+            // Prepare the URL for the actual image (will be loaded after element is created)
+            let actualImageUrl = '';
             if (cafe.photos && cafe.photos.length > 0 && cafe.photos[0].url) {
-                imageUrl = cafe.photos[0].url;
+                actualImageUrl = cafe.photos[0].url;
+            } else if (window.imageLoader) {
+                // Use the imageLoader to get a proper image
+                actualImageUrl = window.imageLoader.getCafeImageUrl(cafe.name, cafe.features);
             } else {
-                // Use themed cafe images if no photo available
-                imageUrl = `https://source.unsplash.com/200x150/?cafe,${encodeURIComponent(cafe.name)}`;
+                // Fallback if imageLoader is not available
+                actualImageUrl = `https://source.unsplash.com/200x150/?cafe,${encodeURIComponent(cafe.name)}`;
             }
             
             const stars = this.generateStars(cafe.rating || 0);
@@ -1551,9 +1628,10 @@ class CaffyRuteGoogleMaps {
             // Simplified, faster HTML structure
             cafeDiv.innerHTML = `
                 <div class="cafe-image">
-                    <img src="${imageUrl}" alt="${cafe.name}" loading="lazy">
+                    <img src="${imageUrl}" alt="${cafe.name}" loading="lazy" data-actual-src="${actualImageUrl}" class="cafe-photo">
                     ${fallbackBadge}
                     <div class="price-overlay">${priceSymbols}</div>
+                    <div class="image-loader"></div>
                 </div>
                 <div class="cafe-details">
                     <h3>${cafe.name}</h3>
@@ -1583,6 +1661,16 @@ class CaffyRuteGoogleMaps {
                     </button>
                 </div>
             `;
+            
+            // After the element is created, load the actual image if imageLoader is available
+            if (window.imageLoader) {
+                // Get the image element
+                const imgElement = cafeDiv.querySelector('img.cafe-photo');
+                if (imgElement) {
+                    // Use the imageLoader to apply the image
+                    window.imageLoader.applyImageToElement(imgElement, actualImageUrl, cafe.name, cafe.features);
+                }
+            }
     
             return cafeDiv;
         } catch (error) {
