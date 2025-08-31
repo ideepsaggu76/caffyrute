@@ -12,21 +12,43 @@ class CaffyRuteGoogleMaps {
         this.currentSearchLocation = null;
         this.autocompleteService = null;
         this.placesService = null;
+        this.isInitialized = false;
         
-        // Initialize location search functionality when DOM is ready
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => this.initLocationSearch());
+        console.log('CaffyRuteGoogleMaps initialized with API key');
+    }
+    
+    // Initialize after Google Maps API is loaded
+    initializeServices() {
+        if (window.google && window.google.maps) {
+            try {
+                this.autocompleteService = new google.maps.places.AutocompleteService();
+                this.placesService = new google.maps.places.PlacesService(document.createElement('div'));
+                this.isInitialized = true;
+                console.log('Google Maps services initialized successfully');
+                
+                // Initialize location search after services are ready
+                this.initLocationSearch();
+            } catch (error) {
+                console.error('Error initializing Google Maps services:', error);
+            }
         } else {
-            this.initLocationSearch();
+            console.warn('Google Maps API not yet loaded, will retry...');
+            setTimeout(() => this.initializeServices(), 1000);
         }
     }
     
     // Initialize location search with autocomplete
     initLocationSearch() {
+        console.log('Initializing location search...');
         const locationInput = document.getElementById('location-input');
         const suggestionsContainer = document.getElementById('location-suggestions');
         
-        if (!locationInput || !suggestionsContainer) return;
+        if (!locationInput || !suggestionsContainer) {
+            console.warn('Location input or suggestions container not found');
+            return;
+        }
+
+        console.log('Location search elements found, setting up event listeners');
         
         let searchTimeout;
         let selectedIndex = -1;
@@ -44,6 +66,14 @@ class CaffyRuteGoogleMaps {
             searchTimeout = setTimeout(() => {
                 this.searchLocationSuggestions(query, suggestionsContainer);
             }, 300);
+        });
+        
+        // Focus event to show suggestions
+        locationInput.addEventListener('focus', () => {
+            const query = locationInput.value.trim();
+            if (query.length >= 2) {
+                this.searchLocationSuggestions(query, suggestionsContainer);
+            }
         });
         
         // Keyboard navigation
@@ -65,6 +95,14 @@ class CaffyRuteGoogleMaps {
                     e.preventDefault();
                     if (selectedIndex >= 0 && suggestions[selectedIndex]) {
                         this.selectLocation(suggestions[selectedIndex]);
+                    } else {
+                        // If no suggestion selected, search directly
+                        const query = locationInput.value.trim();
+                        if (query) {
+                            console.log('Searching location directly:', query);
+                            this.searchLocationByName(query);
+                            this.hideSuggestions();
+                        }
                     }
                     break;
                 case 'Escape':
@@ -81,39 +119,70 @@ class CaffyRuteGoogleMaps {
             }
         });
         
-        // Focus event
-        locationInput.addEventListener('focus', () => {
-            if (locationInput.value.trim().length >= 2) {
-                this.searchLocationSuggestions(locationInput.value.trim(), suggestionsContainer);
-            }
-        });
+        console.log('Location search initialization completed');
     }
     
     // Search for location suggestions
     searchLocationSuggestions(query, container) {
-        // Initialize Google Places Autocomplete Service if available
-        if (window.google && window.google.maps && window.google.maps.places) {
-            if (!this.autocompleteService) {
-                this.autocompleteService = new google.maps.places.AutocompleteService();
-                this.placesService = new google.maps.places.PlacesService(document.createElement('div'));
-            }
+        console.log('Searching for location:', query);
+        
+        // Clear previous suggestions
+        container.innerHTML = '';
+        
+        // Show loading state
+        container.innerHTML = '<div class="suggestion-loading">Searching locations...</div>';
+        this.showSuggestions(container);
+        
+        // Check if Google Places API is available
+        if (!window.google || !window.google.maps || !this.autocompleteService) {
+            console.warn('Google Places API not available, using fallback suggestions');
             
-            const request = {
-                input: query,
-                types: ['geocode', 'establishment'],
-                componentRestrictions: { country: 'in' }, // Focus on India
-            };
+            // Show fallback suggestions
+            const fallbackSuggestions = [
+                { description: query + ", India", place_id: "fallback1" },
+                { description: query + " City, India", place_id: "fallback2" },
+                { description: query + " District", place_id: "fallback3" }
+            ];
             
-            this.autocompleteService.getPlacePredictions(request, (predictions, status) => {
-                if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
-                    this.displayLocationSuggestions(predictions, container);
-                } else {
-                    this.showBasicSuggestions(query, container);
-                }
-            });
-        } else {
-            this.showBasicSuggestions(query, container);
+            this.displayLocationSuggestions(fallbackSuggestions, container);
+            return;
         }
+        
+        // Use Places Autocomplete API
+        const request = {
+            input: query,
+            types: ['geocode', 'establishment'],
+            componentRestrictions: { country: 'in' } // Focus on India
+        };
+        
+        this.autocompleteService.getPlacePredictions(request, (predictions, status) => {
+            console.log('Autocomplete predictions:', predictions, status);
+            if (status === google.maps.places.PlacesServiceStatus.OK && predictions && predictions.length) {
+                this.displayLocationSuggestions(predictions, container);
+            } else {
+                // Show fallback suggestions if API fails
+                container.innerHTML = '<div class="no-suggestions">No locations found</div>';
+                
+                // Add a basic suggestion with the query
+                const suggestionItem = document.createElement('div');
+                suggestionItem.className = 'suggestion-item';
+                suggestionItem.setAttribute('data-query', query);
+                
+                suggestionItem.innerHTML = `
+                    <i class="fas fa-search suggestion-icon"></i>
+                    <div class="suggestion-content">
+                        <div class="suggestion-main">${query}</div>
+                        <div class="suggestion-secondary">Search for this location</div>
+                    </div>
+                `;
+                
+                suggestionItem.addEventListener('click', () => {
+                    this.selectLocation(suggestionItem);
+                });
+                
+                container.appendChild(suggestionItem);
+            }
+        });
     }
     
     // Display location suggestions
@@ -128,14 +197,19 @@ class CaffyRuteGoogleMaps {
             suggestionItem.className = 'suggestion-item';
             suggestionItem.setAttribute('data-place-id', prediction.place_id);
             
-            const mainText = prediction.structured_formatting.main_text;
-            const secondaryText = prediction.structured_formatting.secondary_text || '';
+            const mainText = prediction.structured_formatting ? 
+                prediction.structured_formatting.main_text : 
+                prediction.description.split(',')[0];
+                
+            const secondaryText = prediction.structured_formatting ? 
+                prediction.structured_formatting.secondary_text : 
+                prediction.description.split(',').slice(1).join(',');
             
             suggestionItem.innerHTML = `
                 <i class="fas fa-map-marker-alt suggestion-icon"></i>
                 <div class="suggestion-content">
                     <div class="suggestion-main">${mainText}</div>
-                    <div class="suggestion-secondary">${secondaryText}</div>
+                    <div class="suggestion-secondary">${secondaryText || ''}</div>
                 </div>
             `;
             
@@ -302,6 +376,11 @@ class CaffyRuteGoogleMaps {
     // Initialize Google Maps
     async initMap() {
         try {
+            console.log('Initializing Google Maps...');
+            
+            // Initialize services first
+            this.initializeServices();
+            
             // Get user's current location
             await this.getCurrentLocation();
             
@@ -317,6 +396,8 @@ class CaffyRuteGoogleMaps {
             
             // Search for nearby cafes
             this.searchNearbyCafes();
+            
+            console.log('Google Maps initialization completed');
             
         } catch (error) {
             console.error('Error initializing map:', error);
@@ -357,12 +438,14 @@ class CaffyRuteGoogleMaps {
     }
 
     // Search for nearby cafes using Google Places API with enhanced filtering
-    searchNearbyCafes(radius = 3000) { // Reduced default radius for faster results
+    searchNearbyCafes(radius = 5000) { // Increased radius to find more results
+        console.log('Searching for cafes with location:', this.userLocation);
+        
         const request = {
             location: this.userLocation,
             radius: radius,
-            type: ['cafe'], // Start with just cafes for speed
-            keyword: 'coffee',
+            type: ['restaurant'], // Use restaurant type to get more results
+            keyword: 'coffee cafe',
             fields: [
                 'place_id', 'name', 'geometry', 'rating', 'user_ratings_total',
                 'price_level', 'photos', 'opening_hours', 'formatted_address',
@@ -370,10 +453,21 @@ class CaffyRuteGoogleMaps {
             ]
         };
 
+        console.log('Making Places API request:', request);
+
         this.service.nearbySearch(request, (results, status) => {
+            console.log('Places API response:', status, results);
+            
             if (status === google.maps.places.PlacesServiceStatus.OK) {
+                if (results.length === 0) {
+                    console.log('No results found, trying broader search...');
+                    this.searchWithAlternativeTerms(radius);
+                    return;
+                }
+                
                 // Quick filter and process immediately
                 const filteredResults = this.quickFilterCafes(results);
+                console.log('Filtered results:', filteredResults.length);
                 this.processCafeResults(filteredResults);
             } else {
                 console.error('Places search failed:', status);
@@ -382,27 +476,67 @@ class CaffyRuteGoogleMaps {
             }
         });
     }
+    
+    // Alternative search terms if main search fails
+    searchWithAlternativeTerms(radius) {
+        console.log('Trying alternative search terms...');
+        
+        const alternativeRequest = {
+            location: this.userLocation,
+            radius: radius,
+            type: ['food'], // Even broader search
+            keyword: 'cafe restaurant coffee food',
+        };
 
-    // Quick filter for immediate results
+        this.service.nearbySearch(alternativeRequest, (results, status) => {
+            console.log('Alternative search results:', status, results);
+            
+            if (status === google.maps.places.PlacesServiceStatus.OK && results.length > 0) {
+                const filteredResults = this.quickFilterCafes(results);
+                console.log('Alternative filtered results:', filteredResults.length);
+                this.processCafeResults(filteredResults);
+            } else {
+                // If still no results, try the most basic search
+                this.searchBasicEstablishments(radius);
+            }
+        });
+    }
+    
+    // Most basic search - just establishments
+    searchBasicEstablishments(radius) {
+        console.log('Trying basic establishments search...');
+        
+        const basicRequest = {
+            location: this.userLocation,
+            radius: radius,
+            type: ['establishment'],
+        };
+
+        this.service.nearbySearch(basicRequest, (results, status) => {
+            console.log('Basic search results:', status, results);
+            
+            if (status === google.maps.places.PlacesServiceStatus.OK) {
+                // Show first 10 establishments if nothing else works
+                const basicResults = results.slice(0, 10);
+                this.processCafeResults(basicResults);
+            } else {
+                this.showError('No cafes found in your area. Try changing your location.');
+                this.hideLoading();
+            }
+        });
+    }
+
+    // Quick filter for immediate results (temporarily showing all results)
     quickFilterCafes(results) {
-        return results.filter(place => {
-            const name = place.name.toLowerCase();
-            
-            // Quick exclusion of obvious non-cafes
-            const excludeKeywords = [
-                'cyber', 'internet', 'gaming', 'computer', 'pc',
-                'xerox', 'photocopy', 'printing'
-            ];
-            
-            const hasExcluded = excludeKeywords.some(keyword => name.includes(keyword));
-            
-            // Must have coffee-related terms or be a cafe type
-            const coffeeKeywords = ['coffee', 'cafe', 'espresso', 'bean', 'brew'];
-            const hasCoffee = coffeeKeywords.some(keyword => name.includes(keyword));
-            const isCafe = place.types && place.types.includes('cafe');
-            
-            return !hasExcluded && (hasCoffee || isCafe);
-        }).slice(0, 20); // Limit to 20 for faster processing
+        console.log('All search results:', results.length);
+        
+        // Temporarily show all results to debug the issue
+        results.forEach((place, index) => {
+            console.log(`${index + 1}. ${place.name} - Types: ${place.types?.join(', ') || 'none'}`);
+        });
+        
+        // Return all results for now
+        return results.slice(0, 30); // Show more results
     }
 
     // Process cafe search results with optimized performance
@@ -1015,6 +1149,58 @@ class CaffyRuteGoogleMaps {
         if (cafeList) {
             cafeList.innerHTML = '';
             cafeList.appendChild(errorDiv);
+        }
+    }
+    
+    // Show loading indicator
+    showLoading() {
+        const loadingElement = document.getElementById('loading-cafes');
+        const cafeList = document.getElementById('cafe-list');
+        
+        if (loadingElement && cafeList) {
+            loadingElement.innerHTML = `
+                <div class="loading-spinner"></div>
+                <p>Finding the best cafés near you...</p>
+            `;
+            loadingElement.style.display = 'flex';
+            cafeList.style.display = 'none';
+        }
+    }
+    
+    // Hide loading indicator
+    hideLoading() {
+        const loadingElement = document.getElementById('loading-cafes');
+        const cafeList = document.getElementById('cafe-list');
+        
+        if (loadingElement && cafeList) {
+            loadingElement.style.display = 'none';
+            cafeList.style.display = 'grid';
+        }
+    }
+    
+    // Show loading indicator
+    showLoading() {
+        const loadingElement = document.getElementById('loading-cafes');
+        const cafeList = document.getElementById('cafe-list');
+        
+        if (loadingElement && cafeList) {
+            loadingElement.innerHTML = `
+                <div class="loading-spinner"></div>
+                <p>Finding the best cafés near you...</p>
+            `;
+            loadingElement.style.display = 'flex';
+            cafeList.style.display = 'none';
+        }
+    }
+    
+    // Hide loading indicator
+    hideLoading() {
+        const loadingElement = document.getElementById('loading-cafes');
+        const cafeList = document.getElementById('cafe-list');
+        
+        if (loadingElement && cafeList) {
+            loadingElement.style.display = 'none';
+            cafeList.style.display = 'grid';
         }
     }
 

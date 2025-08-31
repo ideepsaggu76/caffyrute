@@ -489,4 +489,59 @@ function showLocationToast(message, type = 'info') {
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize the integration after a short delay to ensure other scripts are loaded
     setTimeout(initGoogleMapsIntegration, 500);
+    
+    // Initialize search functionality
+    initSearchFunctionality();
 });
+
+// Initialize search functionality
+function initSearchFunctionality() {
+    const cafeSearchInput = document.getElementById('cafe-search');
+    const cafeSearchBtn = document.getElementById('cafe-search-btn');
+    const locationInput = document.getElementById('location-input');
+    
+    if (cafeSearchBtn && cafeSearchInput) {
+        // Cafe search button click
+        cafeSearchBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const query = cafeSearchInput.value.trim();
+            if (query && window.caffyRuteApp) {
+                console.log('Searching for cafes:', query);
+                window.caffyRuteApp.searchCafes(query);
+                showToast('🔍 Searching for: ' + query, 'success');
+            } else if (query) {
+                showToast('🔄 Loading map services...', 'loading');
+            }
+        });
+        
+        // Cafe search enter key
+        cafeSearchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                cafeSearchBtn.click();
+            }
+        });
+    }
+    
+    // Location input enter key
+    if (locationInput) {
+        locationInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const query = locationInput.value.trim();
+                if (query && window.caffyRuteApp) {
+                    window.caffyRuteApp.searchLocationByName(query);
+                    showToast('📍 Searching location: ' + query, 'success');
+                }
+            }
+        });
+    }
+    
+    // Check if Google Maps app is ready every second
+    const checkAppReady = setInterval(() => {
+        if (window.caffyRuteApp && window.caffyRuteApp.autocompleteService) {
+            console.log('CaffyRute app is ready with location services');
+            clearInterval(checkAppReady);
+        }
+    }, 1000);
+}
