@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="theme-color" content="#6B4423">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="CaffyRute">
+    <title>CaffyRute - Find Perfect Cafés Near You</title>
+    <meta name="description" content="Discover the best cafés near your location with CaffyRute. Find cafés with real-time updates, smart filters, ratings and reviews.">
+    <meta name="keywords" content="cafes, coffee shops, location based, cafe finder, coffee near me, cafe reviews">
+    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/home.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-container">
+            <div class="coffee-cup">
+                <div class="cup-body"></div>
+                <div class="cup-handle"></div>
+                <div class="steam">
+                    <div class="steam-puff steam-1"></div>
+                    <div class="steam-puff steam-2"></div>
+                    <div class="steam-puff steam-3"></div>
+                </div>
+            </div>
+            <div class="loading-text">Brewing your experience<span class="loading-dots"></span></div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <nav class="navbar">
+            <div class="nav-container">
+                <div class="logo">
+                    <img src="caffyrute_logo.png" alt="CaffyRute Logo">
+                    <span>CaffyRute</span>
+                </div>
+                <ul class="nav-menu">
+                    <li><a href="index.html" class="nav-link active">Home</a></li>
+                    <li><a href="about.html" class="nav-link">About</a></li>
+                    <li><a href="favorites.html" class="nav-link">Favorites</a></li>
+                    <li><a href="careers.html" class="nav-link">Careers</a></li>
+                    <li><a href="contact.html" class="nav-link">Contact</a></li>
+                </ul>
+                <div class="hamburger">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section id="home" class="hero">
+        <div class="hero-content">
+            <h1>Find Your Perfect Café</h1>
+            <p>Discover amazing coffee experiences near you with real-time location updates</p>
+            <div class="search-container">
+                <input type="text" placeholder="Search for cafés near you..." class="search-input">
+                <button class="search-btn">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+            <div class="filter-buttons">
+                <button class="filter-btn active">All</button>
+                <button class="filter-btn">WiFi Available</button>
+                <button class="filter-btn">Pet Friendly</button>
+                <button class="filter-btn">24/7 Open</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Café List Section -->
+    <section class="cafe-list-section">
+        <div class="container">
+            <h2>Nearby Cafés</h2>
+            <div class="sort-filter-bar">
+                <div class="sort-options">
+                    <label for="sort">Sort by:</label>
+                    <select id="sort">
+                        <option value="distance">Distance</option>
+                        <option value="rating">Rating</option>
+                        <option value="price">Price</option>
+                    </select>
+                </div>
+                <div class="view-toggle">
+                    <button class="view-btn active" data-view="list">
+                        <i class="fas fa-list"></i>
+                    </button>
+                    <button class="view-btn" data-view="grid">
+                        <i class="fas fa-th-large"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Café List Items -->
+            <div class="cafe-list">
+                <div class="cafe-item">
+                    <div class="cafe-image">
+                        <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=300&h=200&fit=crop" alt="Brew & Beans Café">
+                    </div>
+                    <div class="cafe-details">
+                        <h3>Brew & Beans Café</h3>
+                        <div class="cafe-rating">
+                            <div class="stars">
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star-half-alt"></i>
+                            </div>
+                            <span class="rating-text">4.5 (234 reviews)</span>
+                        </div>
+                        <p class="cafe-description">Cozy café with artisanal coffee and fresh pastries. Perfect for work with free WiFi.</p>
+                        <div class="cafe-features">
+                            <span class="feature"><i class="fas fa-wifi"></i> WiFi</span>
+                            <span class="feature"><i class="fas fa-paw"></i> Pet Friendly</span>
+                            <span class="feature"><i class="fas fa-dollar-sign"></i> $$</span>
+                        </div>
+                        <div class="cafe-meta">
+                            <span class="distance"><i class="fas fa-map-marker-alt"></i> 0.3 km away</span>
+                            <span class="status open"><i class="fas fa-clock"></i> Open until 10 PM</span>
+                        </div>
+                    </div>
+                    <div class="cafe-actions">
+                        <button class="heart-btn" onclick="toggleFavorite(this, 'brew-beans')">
+                            <i class="far fa-heart"></i>
+                        </button>
+                        <button class="btn-secondary">View Details</button>
+                        <button class="btn-primary">Get Directions</button>
+                    </div>
+                </div>
+
+                <div class="cafe-item">
+                    <div class="cafe-image">
+                        <img src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=300&h=200&fit=crop" alt="Urban Grind">
+                    </div>
+                    <div class="cafe-details">
+                        <h3>Urban Grind</h3>
+                        <div class="cafe-rating">
+                            <div class="stars">
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="far fa-star"></i>
+                            </div>
+                            <span class="rating-text">4.2 (156 reviews)</span>
+                        </div>
+                        <p class="cafe-description">Modern café with specialty coffee and healthy food options. Great for meetings.</p>
+                        <div class="cafe-features">
+                            <span class="feature"><i class="fas fa-wifi"></i> WiFi</span>
+                            <span class="feature"><i class="fas fa-utensils"></i> Full Menu</span>
+                            <span class="feature"><i class="fas fa-dollar-sign"></i> $$$</span>
+                        </div>
+                        <div class="cafe-meta">
+                            <span class="distance"><i class="fas fa-map-marker-alt"></i> 0.7 km away</span>
+                            <span class="status open"><i class="fas fa-clock"></i> Open until 9 PM</span>
+                        </div>
+                    </div>
+                    <div class="cafe-actions">
+                        <button class="heart-btn" onclick="toggleFavorite(this, 'urban-grind')">
+                            <i class="far fa-heart"></i>
+                        </button>
+                        <button class="btn-secondary">View Details</button>
+                        <button class="btn-primary">Get Directions</button>
+                    </div>
+                </div>
+
+                <div class="cafe-item">
+                    <div class="cafe-image">
+                        <img src="https://images.unsplash.com/photo-1521017432531-fbd92d768814?w=300&h=200&fit=crop" alt="Coffee Corner">
+                    </div>
+                    <div class="cafe-details">
+                        <h3>Coffee Corner</h3>
+                        <div class="cafe-rating">
+                            <div class="stars">
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                            </div>
+                            <span class="rating-text">4.8 (89 reviews)</span>
+                        </div>
+                        <p class="cafe-description">Small neighborhood café with the best espresso in town. Friendly atmosphere.</p>
+                        <div class="cafe-features">
+                            <span class="feature"><i class="fas fa-heart"></i> Local Favorite</span>
+                            <span class="feature"><i class="fas fa-leaf"></i> Organic</span>
+                            <span class="feature"><i class="fas fa-dollar-sign"></i> $$</span>
+                        </div>
+                        <div class="cafe-meta">
+                            <span class="distance"><i class="fas fa-map-marker-alt"></i> 1.2 km away</span>
+                            <span class="status closed"><i class="fas fa-clock"></i> Closed - Opens at 7 AM</span>
+                        </div>
+                    </div>
+                    <div class="cafe-actions">
+                        <button class="heart-btn" onclick="toggleFavorite(this, 'coffee-corner')">
+                            <i class="far fa-heart"></i>
+                        </button>
+                        <button class="btn-secondary">View Details</button>
+                        <button class="btn-primary">Get Directions</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <span id="toast-message"></span>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <div class="logo">
+                        <img src="caffyrute_logo.png" alt="CaffyRute Logo">
+                        <span>CaffyRute</span>
+                    </div>
+                    <p>Discover the perfect café experience near you.</p>
+                    <div class="social-links">
+                        <a href="#"><i class="fab fa-facebook"></i></a>
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="#"><i class="fab fa-instagram"></i></a>
+                        <a href="#"><i class="fab fa-linkedin"></i></a>
+                    </div>
+                </div>
+                
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul>
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="about.html">About Us</a></li>
+                        <li><a href="favorites.html">Favorites</a></li>
+                        <li><a href="careers.html">Careers</a></li>
+                        <li><a href="contact.html">Contact</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-section">
+                    <h4>Support</h4>
+                    <ul>
+                        <li><a href="#">Help Center</a></li>
+                        <li><a href="#">Privacy Policy</a></li>
+                        <li><a href="#">Terms of Service</a></li>
+                        <li><a href="#">FAQ</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <p>&copy; 2025 CaffyRute. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/favorites.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

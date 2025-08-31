@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Favorites - CaffyRute</title>
+    <meta name="description" content="View and manage your favorite cafés on CaffyRute. Keep track of your preferred coffee spots and discover new ones.">
+    <meta name="keywords" content="favorite cafes, saved cafes, coffee favorites, cafe bookmarks">
+    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/favorites.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <nav class="navbar">
+            <div class="nav-container">
+                <div class="logo">
+                    <img src="caffyrute_logo.png" alt="CaffyRute Logo">
+                    <span>CaffyRute</span>
+                </div>
+                <ul class="nav-menu">
+                    <li><a href="index.html" class="nav-link">Home</a></li>
+                    <li><a href="about.html" class="nav-link">About</a></li>
+                    <li><a href="favorites.html" class="nav-link active">Favorites</a></li>
+                    <li><a href="careers.html" class="nav-link">Careers</a></li>
+                    <li><a href="contact.html" class="nav-link">Contact</a></li>
+                </ul>
+                <div class="hamburger">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Page Header -->
+        <section class="page-header">
+            <div class="container">
+                <div class="page-header-content">
+                    <h1>My Favorite Cafés</h1>
+                    <p>Your curated collection of perfect coffee spots</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Favorites Content -->
+        <section class="favorites-section">
+            <div class="container">
+                <!-- Favorites Stats -->
+                <div class="favorites-stats">
+                    <div class="stat-card">
+                        <i class="fas fa-heart"></i>
+                        <div class="stat-info">
+                            <span class="stat-number" id="favorites-count">0</span>
+                            <span class="stat-label">Favorite Cafés</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-clock"></i>
+                        <div class="stat-info">
+                            <span class="stat-number" id="recently-added">0</span>
+                            <span class="stat-label">Added This Week</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filter and Sort Options -->
+                <div class="favorites-controls">
+                    <div class="search-favorites">
+                        <input type="text" id="search-favorites" placeholder="Search your favorites...">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <div class="sort-favorites">
+                        <label for="sort-favorites">Sort by:</label>
+                        <select id="sort-favorites">
+                            <option value="recent">Recently Added</option>
+                            <option value="name">Name A-Z</option>
+                            <option value="rating">Highest Rated</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Empty State -->
+                <div id="empty-favorites" class="empty-state">
+                    <div class="empty-icon">
+                        <i class="far fa-heart"></i>
+                    </div>
+                    <h3>No Favorites Yet</h3>
+                    <p>Start exploring cafés and add them to your favorites by clicking the heart icon!</p>
+                    <a href="index.html" class="btn-primary">
+                        <i class="fas fa-search"></i>
+                        Discover Cafés
+                    </a>
+                </div>
+
+                <!-- Favorites List -->
+                <div id="favorites-list" class="favorites-list">
+                    <!-- Favorites will be dynamically loaded here -->
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <i class="fas fa-heart"></i>
+        <span id="toast-message">Café removed from favorites!</span>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirm-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Remove from Favorites?</h3>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to remove this café from your favorites?</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="btn-primary" onclick="confirmRemove()">Remove</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <div class="logo">
+                        <img src="caffyrute_logo.png" alt="CaffyRute Logo">
+                        <span>CaffyRute</span>
+                    </div>
+                    <p>Discover the perfect café experience near you.</p>
+                    <div class="social-links">
+                        <a href="#"><i class="fab fa-facebook"></i></a>
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="#"><i class="fab fa-instagram"></i></a>
+                        <a href="#"><i class="fab fa-linkedin"></i></a>
+                    </div>
+                </div>
+                
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul>
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="about.html">About Us</a></li>
+                        <li><a href="favorites.html">Favorites</a></li>
+                        <li><a href="careers.html">Careers</a></li>
+                        <li><a href="contact.html">Contact</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-section">
+                    <h4>Support</h4>
+                    <ul>
+                        <li><a href="#">Help Center</a></li>
+                        <li><a href="#">Privacy Policy</a></li>
+                        <li><a href="#">Terms of Service</a></li>
+                        <li><a href="#">FAQ</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <p>&copy; 2025 CaffyRute. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/favorites.js"></script>
+    <script src="js/favorites-page.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

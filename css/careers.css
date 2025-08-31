@@ -1,0 +1,492 @@
+/* Careers Page Specific Styles */
+
+.careers-status {
+    padding: 80px 0;
+    background: var(--warm-white);
+}
+
+.status-card {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px var(--shadow-light);
+    padding: 3rem;
+    text-align: center;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.status-icon {
+    width: 100px;
+    height: 100px;
+    background: linear-gradient(135deg, var(--primary-brown), var(--secondary-brown));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 2rem;
+}
+
+.status-icon i {
+    font-size: 3rem;
+    color: white;
+}
+
+.status-content h2 {
+    font-size: 2.2rem;
+    color: var(--primary-brown);
+    margin-bottom: 1.5rem;
+    font-weight: 600;
+}
+
+.status-content p {
+    color: var(--text-medium);
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+    font-size: 1.1rem;
+}
+
+.status-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 2rem;
+}
+
+/* Culture Section */
+.culture-section {
+    padding: 80px 0;
+    background: white;
+}
+
+.culture-section h2 {
+    text-align: center;
+    font-size: 2.5rem;
+    color: var(--primary-brown);
+    margin-bottom: 3rem;
+    font-weight: 600;
+}
+
+.culture-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+}
+
+.culture-item {
+    text-align: center;
+    padding: 2rem;
+    background: var(--cream);
+    border-radius: 15px;
+    transition: transform 0.3s ease;
+}
+
+.culture-item:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 15px 35px var(--shadow-light);
+}
+
+.culture-icon {
+    width: 80px;
+    height: 80px;
+    background: var(--primary-brown);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+}
+
+.culture-icon i {
+    font-size: 2rem;
+    color: white;
+}
+
+.culture-item h3 {
+    font-size: 1.3rem;
+    color: var(--primary-brown);
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.culture-item p {
+    color: var(--text-medium);
+    line-height: 1.6;
+}
+
+/* Team Section */
+.team-section {
+    padding: 80px 0;
+    background: var(--warm-white);
+}
+
+.team-section h2 {
+    text-align: center;
+    font-size: 2.5rem;
+    color: var(--primary-brown);
+    margin-bottom: 2rem;
+    font-weight: 600;
+}
+
+.team-intro {
+    text-align: center;
+    max-width: 600px;
+    margin: 0 auto 3rem;
+}
+
+.team-intro p {
+    color: var(--text-medium);
+    font-size: 1.1rem;
+    line-height: 1.6;
+}
+
+.team-member-card {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px var(--shadow-light);
+    padding: 3rem;
+    max-width: 800px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 150px 1fr;
+    gap: 2rem;
+    align-items: start;
+}
+
+.member-photo {
+    text-align: center;
+}
+
+.member-avatar {
+    width: 120px;
+    height: 120px;
+    background: var(--cream);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    border: 4px solid var(--primary-brown);
+}
+
+.member-avatar i {
+    font-size: 4rem;
+    color: var(--primary-brown);
+}
+
+.member-info h3 {
+    font-size: 1.8rem;
+    color: var(--primary-brown);
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.member-role {
+    color: var(--gold-accent);
+    font-weight: 500;
+    font-size: 1.1rem;
+    margin-bottom: 1.5rem;
+}
+
+.member-description {
+    color: var(--text-medium);
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+}
+
+.member-skills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.skill-tag {
+    background: var(--primary-brown);
+    color: white;
+    padding: 0.3rem 0.8rem;
+    border-radius: 15px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+/* Future Roles Section */
+.future-roles-section {
+    padding: 80px 0;
+    background: white;
+}
+
+.future-roles-section h2 {
+    text-align: center;
+    font-size: 2.5rem;
+    color: var(--primary-brown);
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.section-intro {
+    text-align: center;
+    color: var(--text-medium);
+    margin-bottom: 3rem;
+    font-size: 1.1rem;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.roles-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
+}
+
+.role-card {
+    background: var(--cream);
+    padding: 2rem;
+    border-radius: 15px;
+    text-align: center;
+    transition: all 0.3s ease;
+    border-left: 4px solid var(--primary-brown);
+}
+
+.role-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px var(--shadow-light);
+    background: white;
+}
+
+.role-icon {
+    width: 70px;
+    height: 70px;
+    background: var(--primary-brown);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+}
+
+.role-icon i {
+    font-size: 1.8rem;
+    color: white;
+}
+
+.role-card h3 {
+    font-size: 1.3rem;
+    color: var(--primary-brown);
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.role-card p {
+    color: var(--text-medium);
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+}
+
+.role-skills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
+.role-skills span {
+    background: rgba(107, 68, 35, 0.1);
+    color: var(--primary-brown);
+    padding: 0.3rem 0.8rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+/* Benefits Section */
+.benefits-section {
+    padding: 80px 0;
+    background: var(--warm-white);
+}
+
+.benefits-section h2 {
+    text-align: center;
+    font-size: 2.5rem;
+    color: var(--primary-brown);
+    margin-bottom: 3rem;
+    font-weight: 600;
+}
+
+.benefits-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+}
+
+.benefit-item {
+    background: white;
+    padding: 2rem;
+    border-radius: 15px;
+    text-align: center;
+    transition: transform 0.3s ease;
+    box-shadow: 0 5px 15px var(--shadow-light);
+}
+
+.benefit-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px var(--shadow-medium);
+}
+
+.benefit-item i {
+    font-size: 2.5rem;
+    color: var(--primary-brown);
+    margin-bottom: 1rem;
+}
+
+.benefit-item h3 {
+    font-size: 1.2rem;
+    color: var(--primary-brown);
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.benefit-item p {
+    color: var(--text-medium);
+    line-height: 1.6;
+}
+
+/* CTA Section */
+.cta-section {
+    padding: 80px 0;
+    background: linear-gradient(135deg, var(--primary-brown), var(--secondary-brown));
+    color: white;
+    text-align: center;
+}
+
+.cta-content h2 {
+    font-size: 2.5rem;
+    margin-bottom: 1.5rem;
+    font-weight: 600;
+}
+
+.cta-content p {
+    font-size: 1.1rem;
+    margin-bottom: 2rem;
+    opacity: 0.9;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.cta-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.cta-actions .btn-primary {
+    background: var(--gold-accent);
+    color: var(--text-dark);
+}
+
+.cta-actions .btn-primary:hover {
+    background: #B8941F;
+    transform: translateY(-2px);
+}
+
+.cta-actions .btn-secondary {
+    background: transparent;
+    color: white;
+    border-color: white;
+}
+
+.cta-actions .btn-secondary:hover {
+    background: white;
+    color: var(--primary-brown);
+}
+
+/* Notification States */
+.notification-enabled .btn-secondary {
+    background: var(--success-green);
+    color: white;
+    border-color: var(--success-green);
+}
+
+.notification-enabled .btn-secondary:hover {
+    background: #45A049;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .status-actions {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .culture-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .team-member-card {
+        grid-template-columns: 1fr;
+        text-align: center;
+        gap: 1.5rem;
+    }
+    
+    .roles-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .benefits-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .cta-actions {
+        flex-direction: column;
+        align-items: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .careers-status,
+    .culture-section,
+    .team-section,
+    .future-roles-section,
+    .benefits-section,
+    .cta-section {
+        padding: 60px 0;
+    }
+    
+    .status-card {
+        padding: 2rem;
+    }
+    
+    .status-icon {
+        width: 80px;
+        height: 80px;
+    }
+    
+    .status-icon i {
+        font-size: 2.5rem;
+    }
+    
+    .status-content h2 {
+        font-size: 1.8rem;
+    }
+    
+    .team-member-card {
+        padding: 2rem;
+    }
+    
+    .member-avatar {
+        width: 100px;
+        height: 100px;
+    }
+    
+    .member-avatar i {
+        font-size: 3rem;
+    }
+    
+    .benefits-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .cta-content h2 {
+        font-size: 2rem;
+    }
+}

@@ -1,0 +1,683 @@
+/* Home Page Specific Styles */
+
+/* Hero Section */
+.hero {
+    padding: 120px 0 80px;
+    background: linear-gradient(135deg, var(--primary-brown) 0%, var(--secondary-brown) 100%);
+    color: white;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    opacity: 0.3;
+}
+
+.hero-content {
+    position: relative;
+    z-index: 2;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.hero h1 {
+    font-size: 3.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.hero p {
+    font-size: 1.3rem;
+    margin-bottom: 2.5rem;
+    opacity: 0.9;
+}
+
+.search-container {
+    display: flex;
+    max-width: 600px;
+    margin: 0 auto 2rem;
+    background: white;
+    border-radius: 50px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.search-input {
+    flex: 1;
+    padding: 1rem 1.5rem;
+    border: none;
+    font-size: 1rem;
+    outline: none;
+    color: var(--text-dark);
+}
+
+.search-input::placeholder {
+    color: var(--text-light);
+}
+
+.search-btn {
+    background: var(--gold-accent);
+    border: none;
+    padding: 1rem 1.5rem;
+    color: white;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.search-btn:hover {
+    background: #B8941F;
+}
+
+.filter-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.filter-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 0.7rem 1.5rem;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    font-weight: 500;
+}
+
+.filter-btn:hover,
+.filter-btn.active {
+    background: var(--gold-accent);
+    border-color: var(--gold-accent);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(212, 175, 55, 0.4);
+}
+
+/* Café List Section */
+.cafe-list-section {
+    padding: 80px 0;
+    background: var(--warm-white);
+}
+
+.cafe-list-section h2 {
+    text-align: center;
+    font-size: 2.5rem;
+    color: var(--primary-brown);
+    margin-bottom: 2rem;
+    font-weight: 600;
+}
+
+.sort-filter-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding: 1rem;
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px var(--shadow-light);
+}
+
+.sort-options {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.sort-options label {
+    font-weight: 500;
+    color: var(--text-medium);
+}
+
+.sort-options select {
+    padding: 0.5rem 1rem;
+    border: 2px solid var(--border-light);
+    border-radius: 8px;
+    background: white;
+    color: var(--text-dark);
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.view-toggle {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.view-btn {
+    padding: 0.7rem;
+    border: 2px solid var(--border-light);
+    background: white;
+    color: var(--text-medium);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.view-btn:hover,
+.view-btn.active {
+    background: var(--primary-brown);
+    color: white;
+    border-color: var(--primary-brown);
+}
+
+/* Café List Items */
+.cafe-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.cafe-item {
+    background: white;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 8px 25px var(--shadow-light);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    padding: 1.5rem;
+    gap: 1.5rem;
+}
+
+.cafe-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px var(--shadow-medium);
+}
+
+.cafe-image {
+    flex-shrink: 0;
+    width: 200px;
+    height: 150px;
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.cafe-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.cafe-item:hover .cafe-image img {
+    transform: scale(1.05);
+}
+
+.cafe-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.cafe-details h3 {
+    font-size: 1.5rem;
+    color: var(--primary-brown);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.cafe-rating {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+}
+
+.stars {
+    display: flex;
+    gap: 2px;
+}
+
+.stars i {
+    color: var(--gold-accent);
+    font-size: 1rem;
+}
+
+.rating-text {
+    color: var(--text-medium);
+    font-size: 0.9rem;
+}
+
+.cafe-description {
+    color: var(--text-medium);
+    line-height: 1.5;
+    margin-bottom: 0.5rem;
+}
+
+.cafe-features {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.feature {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.3rem 0.8rem;
+    background: var(--cream);
+    border-radius: 20px;
+    font-size: 0.85rem;
+    color: var(--text-medium);
+}
+
+.feature i {
+    font-size: 0.8rem;
+    color: var(--primary-brown);
+}
+
+.cafe-meta {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+    font-size: 0.9rem;
+}
+
+.distance {
+    color: var(--text-medium);
+}
+
+.distance i {
+    color: var(--primary-brown);
+    margin-right: 0.3rem;
+}
+
+.status {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.3rem 0.8rem;
+    border-radius: 15px;
+    font-weight: 500;
+    font-size: 0.8rem;
+}
+
+.status.open {
+    background: #E8F5E8;
+    color: var(--success-green);
+}
+
+.status.closed {
+    background: #FFE8E8;
+    color: var(--error-red);
+}
+
+.cafe-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    flex-shrink: 0;
+    align-items: center;
+}
+
+/* Enhanced Responsive Design for Home Page */
+@media (max-width: 768px) {
+    .hero {
+        padding: 120px 0 80px;
+        text-align: center;
+    }
+    
+    .hero h1 {
+        font-size: 2.2rem;
+        line-height: 1.2;
+        margin-bottom: 1rem;
+    }
+    
+    .hero p {
+        font-size: 1.1rem;
+        margin-bottom: 2.5rem;
+        padding: 0 1rem;
+    }
+    
+    .search-container {
+        flex-direction: column;
+        border-radius: 15px;
+        margin-bottom: 2rem;
+        max-width: 400px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    
+    .search-input {
+        border-radius: 15px 15px 0 0;
+        padding: 1rem 1.5rem;
+        font-size: 1rem;
+        border-bottom: 1px solid var(--cream);
+    }
+    
+    .search-btn {
+        border-radius: 0 0 15px 15px;
+        padding: 1rem;
+        font-size: 1.1rem;
+    }
+    
+    .filter-buttons {
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        justify-content: center;
+        max-width: 400px;
+        margin: 0 auto;
+    }
+    
+    .filter-btn {
+        padding: 0.6rem 1.2rem;
+        font-size: 0.85rem;
+        white-space: nowrap;
+        flex: 0 0 auto;
+    }
+    
+    .cafe-list-section {
+        padding: 60px 0;
+    }
+    
+    .cafe-list-section h2 {
+        font-size: 2rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .cafe-item {
+        flex-direction: column;
+        text-align: left;
+        padding: 1.5rem;
+        border-radius: 15px;
+        margin-bottom: 1.5rem;
+    }
+    
+    .cafe-image {
+        width: 100%;
+        max-width: none;
+        height: 220px;
+        margin-bottom: 1.5rem;
+        border-radius: 12px;
+    }
+    
+    .cafe-image img {
+        border-radius: 12px;
+    }
+    
+    .cafe-details h3 {
+        font-size: 1.3rem;
+        margin-bottom: 0.8rem;
+    }
+    
+    .cafe-description {
+        font-size: 0.95rem;
+        line-height: 1.5;
+        margin-bottom: 1rem;
+    }
+    
+    .cafe-features {
+        gap: 1rem;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+    }
+    
+    .feature {
+        font-size: 0.85rem;
+        padding: 0.4rem 0.8rem;
+    }
+    
+    .cafe-meta {
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .cafe-meta span {
+        font-size: 0.9rem;
+    }
+    
+    .cafe-actions {
+        flex-direction: row;
+        width: 100%;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+    }
+    
+    .heart-btn {
+        order: -1;
+        margin-right: auto;
+    }
+    
+    .btn-secondary,
+    .btn-primary {
+        flex: 1;
+        padding: 0.8rem 1rem;
+        font-size: 0.9rem;
+        max-width: 130px;
+    }
+    
+    .sort-filter-bar {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+        margin-bottom: 2rem;
+        padding: 1rem;
+        background: var(--cream);
+        border-radius: 15px;
+    }
+    
+    .sort-options {
+        align-items: center;
+        gap: 0.8rem;
+    }
+    
+    .sort-options label {
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+    
+    .sort-options select {
+        padding: 0.6rem 1rem;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        min-width: 140px;
+    }
+    
+    .view-toggle {
+        gap: 0.5rem;
+    }
+    
+    .view-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    .hero {
+        padding: 100px 0 60px;
+    }
+    
+    .hero h1 {
+        font-size: 1.8rem;
+        line-height: 1.3;
+    }
+    
+    .hero p {
+        font-size: 1rem;
+        padding: 0 0.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .search-container {
+        max-width: 350px;
+        margin-bottom: 1.5rem;
+    }
+    
+    .search-input {
+        padding: 0.9rem 1.2rem;
+        font-size: 0.95rem;
+    }
+    
+    .search-btn {
+        padding: 0.9rem;
+        font-size: 1rem;
+    }
+    
+    .filter-buttons {
+        max-width: 350px;
+        gap: 0.4rem;
+    }
+    
+    .filter-btn {
+        padding: 0.5rem 0.9rem;
+        font-size: 0.8rem;
+        border-radius: 20px;
+    }
+    
+    .cafe-list-section {
+        padding: 50px 0;
+    }
+    
+    .cafe-list-section h2 {
+        font-size: 1.7rem;
+        margin-bottom: 1rem;
+    }
+    
+    .cafe-item {
+        padding: 1.2rem;
+        margin-bottom: 1.2rem;
+        border-radius: 12px;
+    }
+    
+    .cafe-image {
+        height: 180px;
+        margin-bottom: 1.2rem;
+    }
+    
+    .cafe-details h3 {
+        font-size: 1.2rem;
+        margin-bottom: 0.6rem;
+    }
+    
+    .cafe-description {
+        font-size: 0.9rem;
+        margin-bottom: 0.8rem;
+    }
+    
+    .cafe-features {
+        gap: 0.6rem;
+        margin-bottom: 0.8rem;
+    }
+    
+    .feature {
+        font-size: 0.8rem;
+        padding: 0.3rem 0.6rem;
+    }
+    
+    .cafe-rating .rating-text {
+        font-size: 0.85rem;
+    }
+    
+    .cafe-meta {
+        gap: 0.8rem;
+        margin-bottom: 1.2rem;
+    }
+    
+    .cafe-meta span {
+        font-size: 0.85rem;
+    }
+    
+    .cafe-actions {
+        flex-direction: column;
+        gap: 0.8rem;
+    }
+    
+    .heart-btn {
+        order: 0;
+        margin: 0;
+        align-self: flex-start;
+    }
+    
+    .btn-secondary,
+    .btn-primary {
+        width: 100%;
+        max-width: none;
+        padding: 0.7rem 1rem;
+        font-size: 0.9rem;
+    }
+    
+    .sort-filter-bar {
+        padding: 0.8rem;
+        gap: 0.8rem;
+        border-radius: 12px;
+    }
+    
+    .sort-options {
+        flex-direction: column;
+        gap: 0.5rem;
+        text-align: center;
+    }
+    
+    .sort-options label {
+        font-size: 0.9rem;
+    }
+    
+    .sort-options select {
+        padding: 0.5rem 0.8rem;
+        font-size: 0.85rem;
+        min-width: 120px;
+        border-radius: 6px;
+    }
+    
+    .cafe-rating {
+        margin-bottom: 0.8rem;
+        align-items: center;
+    }
+    
+    .stars {
+        margin-right: 0.8rem;
+    }
+    
+    .stars i {
+        font-size: 0.9rem;
+        margin-right: 2px;
+    }
+    
+    .rating-text {
+        font-size: 0.85rem;
+        color: var(--text-medium);
+    }
+    
+    /* Improved card hover effects for mobile */
+    .cafe-item {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .cafe-item:active {
+        transform: translateY(2px);
+        box-shadow: 0 2px 8px rgba(107, 68, 35, 0.15);
+    }
+    
+    /* Better status indicators */
+    .status.open {
+        color: #22c55e;
+        font-weight: 500;
+    }
+    
+    .status.closed {
+        color: #ef4444;
+        font-weight: 500;
+    }
+    
+    .hero-content {
+        padding: 0 1rem;
+        max-width: 100%;
+    }
