@@ -1003,10 +1003,16 @@ class CaffyRuteGoogleMaps {
                 try {
                     if (place.photos && place.photos.length > 0) {
                         photoUrl = place.photos[0].getUrl({ maxWidth: 300, maxHeight: 200 });
+                        console.log(`Successfully got photo URL for ${place.name}:`, photoUrl);
+                    } else {
+                        console.warn('No photos available for', place.name);
+                        // Use high quality coffee-related image from Unsplash as fallback
+                        photoUrl = `https://source.unsplash.com/300x200/?cafe,coffee,${encodeURIComponent(place.name)}`;
                     }
                 } catch (photoError) {
                     console.warn('Error getting photo URL for', place.name, photoError);
-                    photoUrl = 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=300&h=200&fit=crop';
+                    // Use high quality coffee-related image from Unsplash as fallback
+                    photoUrl = `https://source.unsplash.com/300x200/?cafe,coffee,${encodeURIComponent(place.name)}`;
                 }
                 
                 // Get location coordinates safely
@@ -1035,16 +1041,32 @@ class CaffyRuteGoogleMaps {
                 let distance = 0;
                 try {
                     if (this.userLocation && this.userLocation.lat && this.userLocation.lng) {
-                        distance = this.calculateDistance(
-                            this.userLocation.lat, 
-                            this.userLocation.lng,
-                            lat, 
-                            lng
-                        );
-                        // Check if distance is a valid number
-                        if (isNaN(distance) || !isFinite(distance)) {
-                            console.warn('Invalid distance calculated for', place.name);
-                            distance = 0;
+                        // Get coordinates properly
+                        const userLat = parseFloat(this.userLocation.lat);
+                        const userLng = parseFloat(this.userLocation.lng);
+                        const placeLat = parseFloat(lat);
+                        const placeLng = parseFloat(lng);
+                        
+                        if (!isNaN(userLat) && !isNaN(userLng) && !isNaN(placeLat) && !isNaN(placeLng)) {
+                            distance = this.calculateDistance(
+                                userLat,
+                                userLng,
+                                placeLat,
+                                placeLng
+                            );
+                            
+                            // Ensure distance is a valid number with reasonable value
+                            if (isNaN(distance) || !isFinite(distance) || distance < 0) {
+                                console.warn('Invalid distance calculated for', place.name);
+                                // Calculate simplified distance as fallback (just for comparison purposes)
+                                const latDiff = Math.abs(userLat - placeLat);
+                                const lngDiff = Math.abs(userLng - placeLng);
+                                // Rough estimation (not accurate but better than nothing)
+                                distance = Math.sqrt(latDiff * latDiff + lngDiff * lngDiff) * 111.32;
+                            }
+                            
+                            // Log distance for debugging
+                            console.log(`Distance to ${place.name}: ${distance.toFixed(2)}km`);
                         }
                     }
                 } catch (distError) {
@@ -1136,20 +1158,42 @@ class CaffyRuteGoogleMaps {
         
         // Make sure all cafes have a distance calculated
         for (const cafe of this.cafes) {
-            if (typeof cafe.distance !== 'number' || isNaN(cafe.distance)) {
-                cafe.distance = this.calculateDistance(
-                    this.userLocation.lat, 
-                    this.userLocation.lng,
-                    cafe.location.lat,
-                    cafe.location.lng
-                );
+            if (typeof cafe.distance !== 'number' || isNaN(cafe.distance) || cafe.distance === 0) {
+                if (cafe.location && cafe.location.lat && cafe.location.lng && 
+                    this.userLocation && this.userLocation.lat && this.userLocation.lng) {
+                    
+                    // Calculate distance with validated coordinates
+                    const userLat = parseFloat(this.userLocation.lat);
+                    const userLng = parseFloat(this.userLocation.lng);
+                    const cafeLat = parseFloat(cafe.location.lat);
+                    const cafeLng = parseFloat(cafe.location.lng);
+                    
+                    if (!isNaN(userLat) && !isNaN(userLng) && !isNaN(cafeLat) && !isNaN(cafeLng)) {
+                        cafe.distance = this.calculateDistance(userLat, userLng, cafeLat, cafeLng);
+                        console.log(`Calculated distance for ${cafe.name}: ${cafe.distance.toFixed(2)}km`);
+                    } else {
+                        console.warn(`Invalid coordinates for ${cafe.name}:`, 
+                                    {userLat, userLng, cafeLat, cafeLng});
+                        cafe.distance = 999; // Put at the end if coordinates are invalid
+                    }
+                } else {
+                    console.warn(`Missing location data for ${cafe.name}`);
+                    cafe.distance = 999; // Put at the end if missing location data
+                }
             }
         }
+        
+        // Ensure all cafes have a valid distance value
+        this.cafes.forEach(cafe => {
+            if (isNaN(cafe.distance) || cafe.distance < 0) {
+                cafe.distance = 999; // Default distance for invalid values
+            }
+        });
         
         // Sort by distance
         this.cafes.sort((a, b) => {
             // Primary sort by distance
-            return (a.distance || 0) - (b.distance || 0);
+            return (a.distance || 999) - (b.distance || 999);
         });
         
         console.log('Sorted cafes by distance:', this.cafes.map(c => `${c.name}: ${c.distance.toFixed(2)}km`).slice(0, 5));
@@ -1300,16 +1344,47 @@ class CaffyRuteGoogleMaps {
         return features;
     }
 
-    // Calculate distance between two points
+    // Calculate distance between two points using Haversine formula
     calculateDistance(lat1, lng1, lat2, lng2) {
-        const R = 6371; // Earth's radius in kilometers
-        const dLat = this.toRadians(lat2 - lat1);
-        const dLng = this.toRadians(lng2 - lng1);
-        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                  Math.cos(this.toRadians(lat1)) * Math.cos(this.toRadians(lat2)) *
-                  Math.sin(dLng / 2) * Math.sin(dLng / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c;
+        // Convert all inputs to numbers to ensure proper calculation
+        lat1 = parseFloat(lat1);
+        lng1 = parseFloat(lng1);
+        lat2 = parseFloat(lat2);
+        lng2 = parseFloat(lng2);
+        
+        // Validate inputs
+        if (isNaN(lat1) || isNaN(lng1) || isNaN(lat2) || isNaN(lng2)) {
+            console.warn('Invalid coordinates for distance calculation:', {lat1, lng1, lat2, lng2});
+            return 0;
+        }
+        
+        // Check for same coordinates
+        if (lat1 === lat2 && lng1 === lng2) {
+            return 0.01; // Return a small value for same location (10m)
+        }
+        
+        try {
+            const R = 6371; // Earth's radius in kilometers
+            const dLat = this.toRadians(lat2 - lat1);
+            const dLng = this.toRadians(lng2 - lng1);
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                    Math.cos(this.toRadians(lat1)) * Math.cos(this.toRadians(lat2)) *
+                    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            
+            // Calculate distance and ensure it's positive
+            let distance = R * c;
+            
+            // Apply minimum distance for very close locations (to avoid 0.0 km display)
+            if (distance < 0.01) {
+                distance = 0.01;
+            }
+            
+            return distance;
+        } catch (e) {
+            console.error('Error calculating distance:', e);
+            return 0.1; // Fallback minimum distance
+        }
     }
 
     toRadians(degrees) {
@@ -1447,10 +1522,13 @@ class CaffyRuteGoogleMaps {
             cafeDiv.className = cafe.isFallbackResult ? 'cafe-item fallback-result' : 'cafe-item';
             cafeDiv.setAttribute('data-cafe-id', cafe.id || `unknown-${index}`);
             
-            // Safely handle image URL
+            // Safely handle image URL with better fallbacks
             let imageUrl = 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=200&h=150&fit=crop&q=80';
             if (cafe.photos && cafe.photos.length > 0 && cafe.photos[0].url) {
-                imageUrl = cafe.photos[0].url.replace('400', '200').replace('300', '150');
+                imageUrl = cafe.photos[0].url;
+            } else {
+                // Use themed cafe images if no photo available
+                imageUrl = `https://source.unsplash.com/200x150/?cafe,${encodeURIComponent(cafe.name)}`;
             }
             
             const stars = this.generateStars(cafe.rating || 0);
@@ -1484,7 +1562,7 @@ class CaffyRuteGoogleMaps {
                         <span class="rating-text">${(cafe.rating || 0).toFixed(1)} (${cafe.reviewCount || 0})</span>
                     </div>
                     <div class="cafe-meta">
-                        <span class="distance"><i class="fas fa-map-marker-alt"></i> ${(cafe.distance || 0).toFixed(1)} km</span>
+                        <span class="distance"><i class="fas fa-map-marker-alt"></i> ${(cafe.distance > 0 ? cafe.distance : 0.1).toFixed(1)} km</span>
                         <span class="status ${statusClass}"><i class="fas fa-clock"></i> ${statusText}</span>
                         ${cafe.address ? `<span class="address-snippet"><i class="fas fa-location-dot"></i> ${cafe.address.split(',')[0]}</span>` : ''}
                     </div>
