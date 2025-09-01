@@ -449,13 +449,13 @@ function initGoogleMapsIntegration() {
     }
 }
 
-// Enhanced toast function for Google Maps integration
-function showLocationToast(message, type = 'info') {
+// Global toast notification function
+window.showToast = function(message, type = 'info') {
     const toast = document.getElementById('toast');
     const toastMessage = document.getElementById('toast-message');
     
     if (toast && toastMessage) {
-        // Add location icon based on type
+        // Add icon based on type
         let icon = '📍';
         if (type === 'error') icon = '❌';
         if (type === 'success') icon = '✅';
@@ -469,6 +469,11 @@ function showLocationToast(message, type = 'info') {
             toast.classList.remove('show');
         }, 4000);
     }
+}
+
+// Enhanced toast function for Google Maps integration
+function showLocationToast(message, type = 'info') {
+    window.showToast(message, type); // Use the global function
 }
 
 // Initialize Google Maps integration when DOM is ready

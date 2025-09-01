@@ -293,12 +293,22 @@ class CaffyRuteGoogleMaps {
                     const location = place.geometry.location;
                     this.setSearchLocation(location.lat(), location.lng(), place.formatted_address);
                     unifiedSearch.value = place.formatted_address;
+                    
+                    // Show toast notification
+                    if (window.showToast) {
+                        window.showToast('🔍 Searching cafés near ' + place.name || place.formatted_address, 'success');
+                    }
                 }
             });
         } else if (query) {
             // Basic search for the query
             this.searchLocationByName(query);
             unifiedSearch.value = query;
+            
+            // Show toast notification
+            if (window.showToast) {
+                window.showToast('🔍 Searching for ' + query, 'success');
+            }
         }
         
         this.hideSuggestions();
@@ -306,25 +316,57 @@ class CaffyRuteGoogleMaps {
     
     // Use current location
     useCurrentLocation() {
+        // Show loading notification
+        if (window.showToast) {
+            window.showToast('📍 Getting your current location...', 'loading');
+        }
+        
         if (navigator.geolocation) {
-            const locationInput = document.getElementById('location-input');
-            locationInput.value = 'Getting current location...';
+            const unifiedSearch = document.getElementById('unified-search');
             
             navigator.geolocation.getCurrentPosition(
                 (position) => {
                     const lat = position.coords.latitude;
                     const lng = position.coords.longitude;
+                    
+                    // Set the search location and automatically search for cafés
                     this.setSearchLocation(lat, lng, 'Current Location');
-                    locationInput.value = 'Current Location';
+                    
+                    // Update the search input
+                    if (unifiedSearch) {
+                        unifiedSearch.value = 'Current Location';
+                    }
+                    
                     this.hideSuggestions();
+                    
+                    // Show success notification
+                    if (window.showToast) {
+                        window.showToast('🔍 Searching cafés near your location', 'success');
+                    }
                 },
                 (error) => {
-                    locationInput.value = '';
-                    this.showError('Unable to get current location. Please enter manually.');
-                }
+                    // Update the search input
+                    if (unifiedSearch) {
+                        unifiedSearch.value = '';
+                    }
+                    
+                    this.hideSuggestions();
+                    this.showError('Unable to get current location. Please enter location manually.');
+                    
+                    // Show error notification
+                    if (window.showToast) {
+                        window.showToast('❌ Location access denied. Please enter location manually.', 'error');
+                    }
+                },
+                { maximumAge: 60000, timeout: 10000, enableHighAccuracy: true }
             );
         } else {
             this.showError('Geolocation is not supported by this browser.');
+            
+            // Show error notification
+            if (window.showToast) {
+                window.showToast('❌ Your browser does not support geolocation.', 'error');
+            }
         }
     }
     
