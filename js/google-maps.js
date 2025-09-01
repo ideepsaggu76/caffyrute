@@ -133,15 +133,23 @@ class CaffyRuteGoogleMaps {
         console.log('Unified search initialization completed');
     }
     
-    // Search for location suggestions
+    // Search for location suggestions with improved UX
     searchLocationSuggestions(query, container) {
         console.log('Searching for location:', query);
         
         // Clear previous suggestions
         container.innerHTML = '';
         
-        // Show loading state
-        container.innerHTML = '<div class="suggestion-loading">Searching locations...</div>';
+        // Always add the current location option first
+        this.addCurrentLocationOption(container);
+        
+        // Show loading state below the current location option
+        const loadingEl = document.createElement('div');
+        loadingEl.className = 'suggestion-loading';
+        loadingEl.textContent = 'Searching locations...';
+        container.appendChild(loadingEl);
+        
+        // Show the suggestions container
         this.showSuggestions(container);
         
         // Check if Google Places API is available
@@ -155,7 +163,7 @@ class CaffyRuteGoogleMaps {
                 { description: query + " District", place_id: "fallback3" }
             ];
             
-            this.displayLocationSuggestions(fallbackSuggestions, container);
+            this.displayLocationSuggestions(fallbackSuggestions, container, false); // false = don't add current location again
             return;
         }
         
@@ -196,13 +204,32 @@ class CaffyRuteGoogleMaps {
         });
     }
     
-    // Display location suggestions
-    displayLocationSuggestions(predictions, container) {
-        container.innerHTML = '';
+    // Display location suggestions with improved UX
+    displayLocationSuggestions(predictions, container, addCurrentLocationOption = true) {
+        // Clear all except the current location option if it's already there
+        if (!addCurrentLocationOption) {
+            // Keep the current location button if it exists
+            const currentLocationBtn = container.querySelector('.current-location-btn');
+            container.innerHTML = '';
+            if (currentLocationBtn) {
+                container.appendChild(currentLocationBtn);
+            }
+        } else {
+            container.innerHTML = '';
+            // Add current location option first
+            this.addCurrentLocationOption(container);
+        }
         
-        // Add current location option first
-        this.addCurrentLocationOption(container);
+        // Show message if no predictions
+        if (!predictions || predictions.length === 0) {
+            const noResults = document.createElement('div');
+            noResults.className = 'suggestion-loading';
+            noResults.textContent = 'No locations found. Try a different search.';
+            container.appendChild(noResults);
+            return;
+        }
         
+        // Add the location predictions
         predictions.slice(0, 5).forEach((prediction, index) => {
             const suggestionItem = document.createElement('div');
             suggestionItem.className = 'suggestion-item';
@@ -261,20 +288,29 @@ class CaffyRuteGoogleMaps {
         this.showSuggestions(container);
     }
     
-    // Add current location option
+    // Add current location option with improved UI
     addCurrentLocationOption(container) {
+        // Create a more prominent current location button
         const currentLocationBtn = document.createElement('button');
         currentLocationBtn.className = 'current-location-btn';
         currentLocationBtn.innerHTML = `
             <i class="fas fa-crosshairs"></i>
-            <span>Use Current Location</span>
+            <span>Use My Current Location</span>
+            <small>Show cafés near me</small>
         `;
         
+        // Add a clear click handler
         currentLocationBtn.addEventListener('click', () => {
+            console.log('Current location button clicked');
             this.useCurrentLocation();
         });
         
-        container.appendChild(currentLocationBtn);
+        // Add as the first option in the container
+        if (container.firstChild) {
+            container.insertBefore(currentLocationBtn, container.firstChild);
+        } else {
+            container.appendChild(currentLocationBtn);
+        }
     }
     
     // Select a location from suggestions
@@ -318,63 +354,132 @@ class CaffyRuteGoogleMaps {
         this.hideSuggestions();
     }
     
-    // Use current location
+    // Use current location with improved user feedback and automatic café search
     useCurrentLocation() {
         // Show loading notification
         if (window.showToast) {
             window.showToast('📍 Getting your current location...', 'loading');
         }
         
+        // Show loading state in the UI
+        this.showLoading('Finding your location and nearby cafés...');
+        
+        // Ensure the suggestions are hidden
+        this.hideSuggestions();
+        
+        // Update the search input immediately to provide feedback
+        const unifiedSearch = document.getElementById('unified-search');
+        if (unifiedSearch) {
+            unifiedSearch.value = 'Current Location (finding...)';
+            unifiedSearch.setAttribute('disabled', 'disabled'); // Disable input while processing
+        }
+        
         if (navigator.geolocation) {
-            const unifiedSearch = document.getElementById('unified-search');
+            // Set a timeout for geolocation request to ensure we don't wait forever
+            const locationTimeout = setTimeout(() => {
+                if (window.showToast) {
+                    window.showToast('⚠️ Location request is taking longer than expected...', 'loading');
+                }
+            }, 3000);
             
             navigator.geolocation.getCurrentPosition(
                 (position) => {
+                    clearTimeout(locationTimeout);
+                    
                     const lat = position.coords.latitude;
                     const lng = position.coords.longitude;
+                    
+                    console.log('Current location found:', lat, lng);
                     
                     // Update the search input
                     if (unifiedSearch) {
                         unifiedSearch.value = 'Current Location';
+                        unifiedSearch.removeAttribute('disabled');
                     }
                     
-                    // Directly trigger a search with current location
+                    // Set up the location data
                     this.currentSearchLocation = { lat, lng, address: 'Current Location' };
                     this.userLocation = { lat, lng };
+                    
+                    // Save to cache
+                    if (window.cacheManager) {
+                        window.cacheManager.saveLastLocation(this.userLocation);
+                    }
                     
                     // Update map center if map exists
                     if (this.map) {
                         this.map.setCenter({ lat, lng });
+                        this.map.setZoom(15); // Zoom in for better view
+                        
+                        // Clear existing markers before adding a new one
+                        this.clearMarkers();
+                        
+                        // Add marker for user's location
+                        this.addLocationMarker({ lat, lng });
                     }
-                    
-                    // Search for cafes at current location
-                    this.searchNearbyCafes();
-                    
-                    this.hideSuggestions();
                     
                     // Show success notification
                     if (window.showToast) {
-                        window.showToast('🔍 Searching cafés near your location', 'success');
-                    }
-                },
-                (error) => {
-                    // Update the search input
-                    if (unifiedSearch) {
-                        unifiedSearch.value = '';
+                        window.showToast('� Found your location! Searching for cafés nearby...', 'success');
                     }
                     
-                    this.hideSuggestions();
-                    this.showError('Unable to get current location. Please enter location manually.');
+                    // Search for cafes at current location with a reasonable radius
+                    this.searchNearbyCafes(1500); // 1.5km radius for more relevant results
+                },
+                (error) => {
+                    clearTimeout(locationTimeout);
+                    
+                    // Re-enable the search input
+                    if (unifiedSearch) {
+                        unifiedSearch.value = '';
+                        unifiedSearch.removeAttribute('disabled');
+                        unifiedSearch.focus(); // Focus so user can type a location manually
+                    }
+                    
+                    // Provide specific error messages based on the error code
+                    let errorMessage = 'Unable to get your location. ';
+                    
+                    switch (error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMessage += 'Location access was denied. Please check your browser permissions.';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMessage += 'Location information is unavailable. Please try again or enter a location manually.';
+                            break;
+                        case error.TIMEOUT:
+                            errorMessage += 'The location request timed out. Please try again or enter a location manually.';
+                            break;
+                        default:
+                            errorMessage += 'An unknown error occurred. Please try again or enter a location manually.';
+                    }
+                    
+                    this.hideLoading();
+                    this.showError(errorMessage);
                     
                     // Show error notification
                     if (window.showToast) {
-                        window.showToast('❌ Location access denied. Please enter location manually.', 'error');
+                        window.showToast('❌ ' + errorMessage, 'error');
                     }
+                    
+                    console.error('Geolocation error:', error.message, '(Code:', error.code, ')');
                 },
-                { maximumAge: 60000, timeout: 10000, enableHighAccuracy: true }
+                { 
+                    maximumAge: 60000,        // Accept a cached position within the last minute
+                    timeout: 10000,           // Wait up to 10 seconds
+                    enableHighAccuracy: true  // Get the most accurate position possible
+                }
             );
         } else {
-            this.showError('Geolocation is not supported by this browser.');
+            // Browser doesn't support geolocation
+            this.hideLoading();
+            this.showError('Geolocation is not supported by your browser. Please enter a location manually.');
+            
+            // Re-enable the search input
+            if (unifiedSearch) {
+                unifiedSearch.value = '';
+                unifiedSearch.removeAttribute('disabled');
+                unifiedSearch.focus(); // Focus so user can type a location manually
+            }
             
             // Show error notification
             if (window.showToast) {
@@ -426,9 +531,32 @@ class CaffyRuteGoogleMaps {
         });
     }
     
-    // Show suggestions dropdown
+    // Show suggestions dropdown with improved visibility
     showSuggestions(container) {
-        container.classList.add('active');
+        if (container) {
+            container.classList.add('active');
+            container.classList.add('visible');
+            
+            // Make sure the container is properly positioned
+            const unifiedSearch = document.getElementById('unified-search');
+            if (unifiedSearch) {
+                const inputRect = unifiedSearch.getBoundingClientRect();
+                container.style.width = inputRect.width + 'px';
+            }
+            
+            // Add a subtle animation
+            container.style.opacity = '0';
+            container.style.transform = 'translateY(-10px)';
+            
+            // Trigger animation after a tiny delay (for the browser to process the style changes)
+            setTimeout(() => {
+                container.style.opacity = '1';
+                container.style.transform = 'translateY(0)';
+            }, 10);
+            
+            // Focus on the input to ensure keyboard navigation works
+            document.getElementById('unified-search')?.focus();
+        }
     }
     
     // Hide suggestions dropdown
@@ -436,6 +564,11 @@ class CaffyRuteGoogleMaps {
         const container = document.getElementById('location-suggestions');
         if (container) {
             container.classList.remove('active');
+            container.classList.remove('visible');
+            
+            // Add fade-out effect
+            container.style.opacity = '0';
+            container.style.transform = 'translateY(-10px)';
         }
     }
 
