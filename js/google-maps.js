@@ -1,8 +1,7 @@
 // Google Maps API Integration for CaffyRute
-// API Key: AIzaSyAhJAse30TCMIK7-N9moQxk7akoW5nyB0I
 
 class CaffyRuteGoogleMaps {
-    constructor(apiKey = 'AIzaSyAhJAse30TCMIK7-N9moQxk7akoW5nyB0I') {
+    constructor(apiKey) {
         this.apiKey = apiKey;
         this.map = null;
         this.service = null;

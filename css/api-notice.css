@@ -1,0 +1,31 @@
+.api-setup-notice {
+    background-color: #fff8e1;
+    border-left: 4px solid #ffc107;
+    padding: 15px 20px;
+    margin: 20px 0;
+    border-radius: 4px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.api-setup-notice h3 {
+    color: #ff8f00;
+    margin-top: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.api-setup-notice p {
+    margin: 10px 0;
+    line-height: 1.5;
+}
+
+.api-setup-notice a {
+    color: #0277bd;
+    text-decoration: underline;
+    font-weight: 500;
+}
+
+.api-setup-notice a:hover {
+    color: #01579b;
+}

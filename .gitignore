@@ -1,0 +1,22 @@
+# CaffyRute .gitignore file
+
+# Configuration file with API keys
+config.js
+
+# Environment variables
+.env
+
+# Node modules if used
+node_modules/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.sublime-*
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

@@ -22,6 +22,7 @@
     <link rel="stylesheet" href="css/fixes.css">
     <link rel="stylesheet" href="css/animations.css">
     <link rel="stylesheet" href="css/cache.css">
+    <link rel="stylesheet" href="css/api-notice.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
@@ -205,6 +206,7 @@
         </div>
     </footer>
 
+    <script src="config.js"></script>
     <script src="js/cache-manager.js"></script>
     <script src="js/image-loader.js"></script>
     <script src="js/favorites.js"></script>
@@ -215,21 +217,18 @@
     
     <!-- Google Maps API -->
     <script>
-        // Your Google Maps API Key
-        const GOOGLE_MAPS_API_KEY = 'AIzaSyAhJAse30TCMIK7-N9moQxk7akoW5nyB0I';
-        
         // Initialize the app
         window.caffyRuteApp = null;
         
         function initGoogleMaps() {
-            window.caffyRuteApp = new CaffyRuteGoogleMaps(GOOGLE_MAPS_API_KEY);
+            window.caffyRuteApp = new CaffyRuteGoogleMaps(CONFIG.GOOGLE_MAPS_API_KEY);
             window.caffyRuteApp.initMap();
         }
         
         // Load Google Maps API
         function loadGoogleMapsAPI() {
             const script = document.createElement('script');
-            script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&callback=initGoogleMaps`;
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${CONFIG.GOOGLE_MAPS_API_KEY}&libraries=places&callback=initGoogleMaps`;
             script.async = true;
             script.defer = true;
             document.head.appendChild(script);
@@ -238,12 +237,19 @@
         // Start loading when DOM is ready
         document.addEventListener('DOMContentLoaded', function() {
             // Show API key setup message if not configured
-            if (GOOGLE_MAPS_API_KEY === 'YOUR_GOOGLE_MAPS_API_KEY') {
+            if (!CONFIG || CONFIG.GOOGLE_MAPS_API_KEY === 'YOUR_GOOGLE_MAPS_API_KEY') {
                 document.getElementById('loading-cafes').innerHTML = `
                     <div class="api-setup-notice">
                         <h3><i class="fas fa-key"></i> API Key Required</h3>
-                        <p>To load real café data, please add your Google Maps API key to the script.</p>
-                        <p>Get your API key from: <a href="https://console.cloud.google.com/apis/credentials" target="_blank">Google Cloud Console</a></p>
+                        <p><strong>Configuration Missing:</strong> To use CaffyRute, you need to set up your Google Maps API key.</p>
+                        <p><strong>Steps to fix:</strong></p>
+                        <ol>
+                            <li>Copy <code>config.template.js</code> to <code>config.js</code></li>
+                            <li>Edit <code>config.js</code> and replace <code>YOUR_GOOGLE_MAPS_API_KEY</code> with your actual API key</li>
+                            <li>Refresh this page</li>
+                        </ol>
+                        <p><a href="https://console.cloud.google.com/apis/credentials" target="_blank">Get your API key from Google Cloud Console →</a></p>
+                        <p><small>Note: Keep your API key secure. The <code>config.js</code> file is added to <code>.gitignore</code> to prevent it from being committed to version control.</small></p>
                     </div>
                 `;
             } else {
