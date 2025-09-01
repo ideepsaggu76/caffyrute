@@ -291,19 +291,23 @@ class CaffyRuteGoogleMaps {
             }, (place, status) => {
                 if (status === google.maps.places.PlacesServiceStatus.OK) {
                     const location = place.geometry.location;
-                    this.setSearchLocation(location.lat(), location.lng(), place.formatted_address);
                     unifiedSearch.value = place.formatted_address;
+                    
+                    // Directly trigger the search without requiring Enter
+                    this.unifiedSearch(place.formatted_address);
                     
                     // Show toast notification
                     if (window.showToast) {
-                        window.showToast('🔍 Searching cafés near ' + place.name || place.formatted_address, 'success');
+                        window.showToast('🔍 Searching cafés near ' + (place.name || place.formatted_address), 'success');
                     }
                 }
             });
         } else if (query) {
             // Basic search for the query
-            this.searchLocationByName(query);
             unifiedSearch.value = query;
+            
+            // Directly trigger the search without requiring Enter
+            this.unifiedSearch(query);
             
             // Show toast notification
             if (window.showToast) {
@@ -329,13 +333,22 @@ class CaffyRuteGoogleMaps {
                     const lat = position.coords.latitude;
                     const lng = position.coords.longitude;
                     
-                    // Set the search location and automatically search for cafés
-                    this.setSearchLocation(lat, lng, 'Current Location');
-                    
                     // Update the search input
                     if (unifiedSearch) {
                         unifiedSearch.value = 'Current Location';
                     }
+                    
+                    // Directly trigger a search with current location
+                    this.currentSearchLocation = { lat, lng, address: 'Current Location' };
+                    this.userLocation = { lat, lng };
+                    
+                    // Update map center if map exists
+                    if (this.map) {
+                        this.map.setCenter({ lat, lng });
+                    }
+                    
+                    // Search for cafes at current location
+                    this.searchNearbyCafes();
                     
                     this.hideSuggestions();
                     
