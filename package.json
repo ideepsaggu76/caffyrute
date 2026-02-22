@@ -4,6 +4,7 @@
   "description": "CaffyRute - Find nearby cafes based on your location",
   "main": "server.js",
   "scripts": {
+    "build": "mkdir -p public && cp -r *.html css js animations *.png config.template.js public/",
     "dev": "node server.js",
     "start": "node server.js"
   },

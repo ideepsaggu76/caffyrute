@@ -12,6 +12,7 @@ node_modules/
 
 # Vercel
 .vercel/
+public/
 
 # IDE and editor files
 .vscode/
