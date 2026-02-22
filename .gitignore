@@ -1,7 +1,7 @@
 # CaffyRute .gitignore file
 
-# Configuration file with API keys
-config.js
+# Configuration file with API keys (root only - not api/config.js)
+/config.js
 
 # Environment variables
 .env

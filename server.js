@@ -39,12 +39,14 @@ const nearbyCafes = require('./api/nearby-cafes');
 const cafeDetails = require('./api/cafe-details');
 const geocodeHandler = require('./api/geocode');
 const autocompleteHandler = require('./api/autocomplete');
+const configHandler = require('./api/config');
 
 // API routes
 app.get('/api/nearby-cafes', nearbyCafes);
 app.get('/api/cafe-details', cafeDetails);
 app.get('/api/geocode', geocodeHandler);
 app.get('/api/autocomplete', autocompleteHandler);
+app.get('/api/config', configHandler);
 
 // Serve static files (frontend)
 app.use(express.static(path.join(__dirname), {
