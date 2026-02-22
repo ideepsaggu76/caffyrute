@@ -225,7 +225,7 @@
             window.caffyRuteApp.initMap();
         }
         
-        // Load Google Maps API
+        // Load Google Maps API (map rendering only - Places API calls go through backend)
         function loadGoogleMapsAPI() {
             const script = document.createElement('script');
             script.src = `https://maps.googleapis.com/maps/api/js?key=${CONFIG.GOOGLE_MAPS_API_KEY}&libraries=places&callback=initGoogleMaps`;
@@ -233,7 +233,7 @@
             script.defer = true;
             document.head.appendChild(script);
         }
-        
+
         // Start loading when DOM is ready
         document.addEventListener('DOMContentLoaded', function() {
             // Show API key setup message if not configured

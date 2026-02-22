@@ -3,13 +3,19 @@
 
 // Configuration object for the application
 const CONFIG = {
-    // API Keys
-    GOOGLE_MAPS_API_KEY: 'YOUR_GOOGLE_MAPS_API_KEY', // Replace with your actual API key
-    
+    // Google Maps JavaScript API key (for map rendering only)
+    // Get your key from: https://console.cloud.google.com/apis/credentials
+    // Restrict to: Maps JavaScript API, HTTP referrer restricted
+    GOOGLE_MAPS_API_KEY: 'YOUR_GOOGLE_MAPS_API_KEY',
+
+    // Backend API base URL (empty string = same-origin)
+    // Set this if your backend is hosted on a different domain
+    API_BASE_URL: '',
+
     // App Settings
     APP_NAME: 'CaffyRute',
-    VERSION: '1.0.0',
-    
+    VERSION: '2.0.0',
+
     // Feature Flags
     ENABLE_CACHING: true,
     ENABLE_ANALYTICS: false

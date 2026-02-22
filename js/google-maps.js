@@ -14,6 +14,8 @@ class CaffyRuteGoogleMaps {
         this.geocoder = null;
         this.isInitialized = false;
         this.useCache = true; // Enable caching by default
+        this.locationReady = false;
+        this.locationPromise = null;
         
         // Try to restore last location from cache
         if (window.cacheManager) {
@@ -134,59 +136,49 @@ class CaffyRuteGoogleMaps {
     }
     
     // Search for location suggestions with improved UX
-    searchLocationSuggestions(query, container) {
+    async searchLocationSuggestions(query, container) {
         console.log('Searching for location:', query);
-        
+
         // Clear previous suggestions
         container.innerHTML = '';
-        
+
         // Always add the current location option first
         this.addCurrentLocationOption(container);
-        
+
         // Show loading state below the current location option
         const loadingEl = document.createElement('div');
         loadingEl.className = 'suggestion-loading';
         loadingEl.textContent = 'Searching locations...';
         container.appendChild(loadingEl);
-        
+
         // Show the suggestions container
         this.showSuggestions(container);
-        
-        // Check if Google Places API is available
-        if (!window.google || !window.google.maps || !this.autocompleteService) {
-            console.warn('Google Places API not available, using fallback suggestions');
-            
-            // Show fallback suggestions
-            const fallbackSuggestions = [
-                { description: query + ", India", place_id: "fallback1" },
-                { description: query + " City, India", place_id: "fallback2" },
-                { description: query + " District", place_id: "fallback3" }
-            ];
-            
-            this.displayLocationSuggestions(fallbackSuggestions, container, false); // false = don't add current location again
-            return;
-        }
-        
-        // Use Places Autocomplete API
-        const request = {
-            input: query,
-            types: ['geocode', 'establishment'],
-            componentRestrictions: { country: 'in' } // Focus on India
-        };
-        
-        this.autocompleteService.getPlacePredictions(request, (predictions, status) => {
-            console.log('Autocomplete predictions:', predictions, status);
-            if (status === google.maps.places.PlacesServiceStatus.OK && predictions && predictions.length) {
+
+        try {
+            const apiBase = (window.CONFIG && window.CONFIG.API_BASE_URL) || '';
+            const response = await fetch(`${apiBase}/api/autocomplete?input=${encodeURIComponent(query)}&types=geocode`);
+            const data = await response.json();
+
+            if (data.success && data.predictions && data.predictions.length > 0) {
+                // Convert backend predictions to format expected by displayLocationSuggestions
+                const predictions = data.predictions.map(p => ({
+                    description: p.description,
+                    place_id: p.placeId,
+                    structured_formatting: {
+                        main_text: p.mainText,
+                        secondary_text: p.secondaryText
+                    }
+                }));
                 this.displayLocationSuggestions(predictions, container);
             } else {
-                // Show fallback suggestions if API fails
-                container.innerHTML = '<div class="no-suggestions">No locations found</div>';
-                
-                // Add a basic suggestion with the query
+                // Show a basic suggestion with the query
+                container.innerHTML = '';
+                this.addCurrentLocationOption(container);
+
                 const suggestionItem = document.createElement('div');
                 suggestionItem.className = 'suggestion-item';
                 suggestionItem.setAttribute('data-query', query);
-                
+
                 suggestionItem.innerHTML = `
                     <i class="fas fa-search suggestion-icon"></i>
                     <div class="suggestion-content">
@@ -194,16 +186,37 @@ class CaffyRuteGoogleMaps {
                         <div class="suggestion-secondary">Search for this location</div>
                     </div>
                 `;
-                
+
                 suggestionItem.addEventListener('click', () => {
                     this.selectLocation(suggestionItem);
                 });
-                
+
                 container.appendChild(suggestionItem);
             }
-        });
+        } catch (error) {
+            console.warn('Autocomplete API error, falling back to client-side:', error);
+
+            // Fallback to client-side autocomplete if backend unavailable
+            if (this.autocompleteService) {
+                const request = {
+                    input: query,
+                    types: ['geocode', 'establishment'],
+                    componentRestrictions: { country: 'in' }
+                };
+
+                this.autocompleteService.getPlacePredictions(request, (predictions, status) => {
+                    if (status === google.maps.places.PlacesServiceStatus.OK && predictions && predictions.length) {
+                        this.displayLocationSuggestions(predictions, container);
+                    } else {
+                        container.innerHTML = '<div class="no-suggestions">No locations found</div>';
+                    }
+                });
+            } else {
+                container.innerHTML = '<div class="no-suggestions">No locations found</div>';
+            }
+        }
     }
-    
+
     // Display location suggestions with improved UX
     displayLocationSuggestions(predictions, container, addCurrentLocationOption = true) {
         // Clear all except the current location option if it's already there
@@ -314,30 +327,46 @@ class CaffyRuteGoogleMaps {
     }
     
     // Select a location from suggestions
-    selectLocation(suggestionElement) {
+    async selectLocation(suggestionElement) {
         const unifiedSearch = document.getElementById('unified-search');
         const placeId = suggestionElement.getAttribute('data-place-id');
         const query = suggestionElement.getAttribute('data-query');
-        
-        if (placeId && this.placesService) {
-            // Get place details using place ID
-            this.placesService.getDetails({
-                placeId: placeId,
-                fields: ['geometry', 'formatted_address', 'name']
-            }, (place, status) => {
-                if (status === google.maps.places.PlacesServiceStatus.OK) {
-                    const location = place.geometry.location;
-                    unifiedSearch.value = place.formatted_address;
-                    
-                    // Directly trigger the search without requiring Enter
-                    this.unifiedSearch(place.formatted_address);
-                    
-                    // Show toast notification
+
+        if (placeId) {
+            try {
+                // Use backend API to get place details
+                const apiBase = (window.CONFIG && window.CONFIG.API_BASE_URL) || '';
+                const response = await fetch(`${apiBase}/api/cafe-details?placeId=${placeId}&fields=geometry,formatted_address,name`);
+                const data = await response.json();
+
+                if (data.success && data.cafe) {
+                    unifiedSearch.value = data.cafe.address;
+                    this.unifiedSearch(data.cafe.address);
+
                     if (window.showToast) {
-                        window.showToast('🔍 Searching cafés near ' + (place.name || place.formatted_address), 'success');
+                        window.showToast('Searching cafes near ' + (data.cafe.name || data.cafe.address), 'success');
                     }
+                } else {
+                    // Fallback: use the suggestion text as search query
+                    const text = suggestionElement.querySelector('.suggestion-main')?.textContent || query || '';
+                    unifiedSearch.value = text;
+                    this.unifiedSearch(text);
                 }
-            });
+            } catch (error) {
+                console.warn('Backend API unavailable, falling back to client-side:', error);
+                // Fallback to client-side Places API
+                if (this.placesService) {
+                    this.placesService.getDetails({
+                        placeId: placeId,
+                        fields: ['geometry', 'formatted_address', 'name']
+                    }, (place, status) => {
+                        if (status === google.maps.places.PlacesServiceStatus.OK) {
+                            unifiedSearch.value = place.formatted_address;
+                            this.unifiedSearch(place.formatted_address);
+                        }
+                    });
+                }
+            }
         } else if (query) {
             // Basic search for the query
             unifiedSearch.value = query;
@@ -611,7 +640,7 @@ class CaffyRuteGoogleMaps {
             }
             
             // Get user's current location (in background, don't await)
-            const locationPromise = this.getCurrentLocation();
+            this.locationPromise = this.getCurrentLocation();
             
             // Create map using cached location if available, or default location
             this.map = new google.maps.Map(document.getElementById('map'), {
@@ -640,13 +669,17 @@ class CaffyRuteGoogleMaps {
                 console.log('Displayed cached cafes immediately');
                 
                 // Still update location and refresh results in the background
-                locationPromise.then(() => {
+                this.locationPromise.then(() => {
+                    // Recalculate distances with fresh location
+                    this.sortCafesByDistance();
+                    this.displayCafes();
+
                     // Only search again if the location has changed significantly
-                    if (!cachedLocation || 
+                    if (!cachedLocation ||
                         this.calculateDistance(
-                            cachedLocation.lat, 
-                            cachedLocation.lng, 
-                            this.userLocation.lat, 
+                            cachedLocation.lat,
+                            cachedLocation.lng,
+                            this.userLocation.lat,
                             this.userLocation.lng
                         ) > 0.5) { // If moved more than 0.5km
                         console.log('Location changed significantly, refreshing results');
@@ -655,7 +688,7 @@ class CaffyRuteGoogleMaps {
                 });
             } else {
                 // No cached results, wait for location and then search
-                await locationPromise;
+                await this.locationPromise;
                 
                 // Add marker for user's location
                 this.addLocationMarker(this.userLocation);
@@ -685,7 +718,7 @@ class CaffyRuteGoogleMaps {
 
     // Get user's current location
     getCurrentLocation() {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
@@ -693,12 +726,21 @@ class CaffyRuteGoogleMaps {
                             lat: position.coords.latitude,
                             lng: position.coords.longitude
                         };
+                        this.locationReady = true;
+                        console.log('Location acquired:', this.userLocation);
                         resolve(this.userLocation);
                     },
                     (error) => {
-                        // Fallback to default location (New York)
-                        this.userLocation = { lat: 40.7128, lng: -74.0060 };
-                        console.warn('Location access denied, using default location');
+                        // Fallback to New Delhi (India-focused app)
+                        this.userLocation = { lat: 28.6139, lng: 77.2090 };
+                        this.locationReady = true;
+                        console.warn('Location access denied, using default location (New Delhi)');
+
+                        // Show visible warning to user
+                        if (window.showToast) {
+                            window.showToast('Location unavailable. Showing results for New Delhi.', 'warning');
+                        }
+
                         resolve(this.userLocation);
                     },
                     {
@@ -709,59 +751,55 @@ class CaffyRuteGoogleMaps {
                 );
             } else {
                 // Fallback for browsers without geolocation
-                this.userLocation = { lat: 40.7128, lng: -74.0060 };
+                this.userLocation = { lat: 28.6139, lng: 77.2090 };
+                this.locationReady = true;
                 resolve(this.userLocation);
             }
         });
     }
 
-    // Search for nearby cafes using Google Places API with enhanced filtering
-    searchNearbyCafes(radius = 5000, attemptCount = 0) { // Default 5km radius
-        console.log('Searching for cafes with location:', this.userLocation, 'radius:', radius, 'attempt:', attemptCount + 1);
-        
+    // Search for nearby cafes using backend API with server-side filtering
+    async searchNearbyCafes(radius = 5000) {
+        console.log('Searching for cafes with location:', this.userLocation, 'radius:', radius);
+
         // Validate user location first
         if (!this.userLocation) {
             console.error('Cannot search cafes: User location not set');
             this.showError('Your location is not available. Please enable location services or search for a specific location.');
             this.hideLoading();
-            this.displayCafes(); // Show "No cafes found" message
+            this.displayCafes();
             return;
         }
-        
+
+        // Wait for location to be ready if needed
+        if (!this.locationReady && this.locationPromise) {
+            await this.locationPromise;
+        }
+
         // Save current location to cache
         if (window.cacheManager) {
             window.cacheManager.saveLastLocation(this.userLocation);
         }
-        
-        if (!this.service) {
-            console.error('Places service not initialized');
-            this.showError('Google Maps service is not initialized. Please reload the page.');
-            this.hideLoading();
-            this.displayCafes(); // Show "No cafes found" message
-            return;
-        }
-        
-        // Clear any existing timeout to ensure multiple searches don't overlap
+
+        // Clear any existing timeout
         if (this.searchTimeout) {
             clearTimeout(this.searchTimeout);
         }
-        
-        // Try to get results from cache first if caching is enabled
-        if (this.useCache && window.cacheManager && attemptCount === 0) {
+
+        // Try to get results from cache first
+        if (this.useCache && window.cacheManager) {
             const cachedResults = window.cacheManager.getSearchResults(this.userLocation, radius);
             if (cachedResults && cachedResults.length > 0) {
-                console.log('Using cached results for this location:', cachedResults.length, 'cafes');
+                console.log('Using cached results:', cachedResults.length, 'cafes');
                 this.cafes = cachedResults;
-                this.sortCafesByDistance(); // Re-sort based on current location
+                this.sortCafesByDistance();
                 this.displayCafes();
                 this.addMapMarkers();
                 return;
-            } else {
-                console.log('No cached results available, performing search');
             }
         }
-        
-        // Update loading message with radius information
+
+        // Show loading UI
         const loadingElement = document.getElementById('loading-cafes');
         if (loadingElement) {
             loadingElement.innerHTML = `
@@ -770,21 +808,18 @@ class CaffyRuteGoogleMaps {
             `;
             loadingElement.style.display = 'flex';
         }
-        
-        // Make sure cafe list is hidden while loading
+
         const cafeList = document.getElementById('cafe-list');
         if (cafeList) {
             cafeList.style.display = 'none';
         }
-        
-        // Update the radius selector to match the current search radius
+
+        // Update the radius selector
         const radiusSelect = document.getElementById('radius');
         if (radiusSelect) {
-            // Find the closest matching option
             const options = Array.from(radiusSelect.options);
             let bestMatch = options[0];
             let minDiff = Math.abs(parseInt(options[0].value) - radius);
-            
             for (let i = 1; i < options.length; i++) {
                 const diff = Math.abs(parseInt(options[i].value) - radius);
                 if (diff < minDiff) {
@@ -792,113 +827,104 @@ class CaffyRuteGoogleMaps {
                     bestMatch = options[i];
                 }
             }
-            
             radiusSelect.value = bestMatch.value;
         }
-        
-        const request = {
-            location: this.userLocation,
-            radius: radius,
-            type: ['cafe', 'restaurant', 'bakery'], // Focus on relevant types
-            keyword: 'cafe coffee espresso tea', // Expanded keywords for better matches
-            fields: [
-                'place_id', 'name', 'geometry', 'rating', 'user_ratings_total',
-                'price_level', 'photos', 'opening_hours', 'formatted_address',
-                'types', 'business_status', 'vicinity'
-            ],
-            rankBy: google.maps.places.RankBy.PROMINENCE // Prioritize prominence over distance for more relevant results
-        };
 
-        console.log('Making Places API request:', request);
-        
-        // Show additional UI feedback
         const sectionHeader = document.querySelector('.section-header h2');
         if (sectionHeader) {
             sectionHeader.textContent = 'Finding cafés near you...';
         }
 
+        // Get sort preference
+        const sortSelect = document.getElementById('sort');
+        const sortBy = sortSelect ? sortSelect.value : 'distance';
+
+        try {
+            const apiBase = (window.CONFIG && window.CONFIG.API_BASE_URL) || '';
+            const params = new URLSearchParams({
+                lat: this.userLocation.lat,
+                lng: this.userLocation.lng,
+                radius: radius,
+                sort: sortBy,
+            });
+
+            const response = await fetch(`${apiBase}/api/nearby-cafes?${params}`);
+            const data = await response.json();
+
+            if (data.success && data.cafes && data.cafes.length > 0) {
+                this.cafes = data.cafes;
+
+                // Update section header
+                if (sectionHeader) {
+                    sectionHeader.textContent = 'Cafés Near You';
+                }
+
+                this.displayCafes();
+                this.addMapMarkers();
+
+                // Cache results
+                if (window.cacheManager && this.useCache) {
+                    window.cacheManager.cacheCafes(this.cafes);
+                    window.cacheManager.cacheSearchResults(this.userLocation, radius, this.cafes);
+                }
+            } else {
+                console.log('No cafes found from API');
+                this.cafes = [];
+                this.displayCafes();
+            }
+        } catch (error) {
+            console.error('Error fetching cafes from API:', error);
+            // Fallback to client-side search if backend is unavailable
+            console.log('Falling back to client-side Google Places search...');
+            this.searchNearbyCafesClientSide(radius);
+            return;
+        }
+
+        this.hideLoading();
+    }
+
+    // Client-side fallback search (used when backend is unavailable)
+    searchNearbyCafesClientSide(radius = 5000) {
+        console.log('Client-side fallback search, radius:', radius);
+
+        if (!this.service) {
+            console.error('Places service not initialized');
+            this.showError('Google Maps service is not available. Please reload the page.');
+            this.hideLoading();
+            return;
+        }
+
+        const request = {
+            location: this.userLocation,
+            radius: radius,
+            type: ['cafe'],
+            keyword: 'cafe coffee',
+        };
+
         try {
             this.service.nearbySearch(request, (results, status) => {
-                console.log('Places API response status:', status);
-                console.log('Places API response length:', results ? results.length : 0);
-                
-                if (status === google.maps.places.PlacesServiceStatus.OK) {
-                    if (!results || results.length === 0) {
-                        console.log('No results found, trying broader search...');
-                        
-                        // Try alternative search terms first
-                        if (attemptCount === 0) {
-                            this.searchWithAlternativeTerms(radius, attemptCount + 1);
-                        } 
-                        // Then try increasing radius if we haven't gone too far
-                        else if (radius < 20000) { // Max 20 km radius
-                            const newRadius = radius * 1.5; // Increase the radius by 50%
-                            console.log(`Increasing search radius to ${newRadius}m`);
-                            this.searchNearbyCafes(newRadius, attemptCount + 1);
-                        } else {
-                            console.log('Reached maximum search radius, using basic establishments search');
-                            this.searchBasicEstablishments(radius);
-                        }
-                        return;
-                    }
-                    
-                    // Log the first result to see what data we're getting
-                    if (results.length > 0) {
-                        console.log('First result example:', JSON.stringify({
-                            name: results[0].name,
-                            place_id: results[0].place_id,
-                            types: results[0].types,
-                            vicinity: results[0].vicinity
-                        }));
-                    }
-                    
-                    // Quick filter and process immediately
+                if (status === google.maps.places.PlacesServiceStatus.OK && results && results.length > 0) {
                     const filteredResults = this.quickFilterCafes(results);
-                    console.log('Filtered results count:', filteredResults.length);
-                    
-                    if (filteredResults.length === 0 && radius < 20000) {
-                        // If filtering removed all results, try larger radius
-                        const newRadius = radius * 2;
-                        console.log(`No cafes after filtering, increasing radius to ${newRadius}m`);
-                        this.searchNearbyCafes(newRadius, attemptCount + 1);
-                    } else if (filteredResults.length === 0) {
-                        // If we've reached max radius and still no results after filtering
-                        console.log('No cafes found after maximum radius search and filtering');
-                        this.hideLoading();
-                        this.cafes = [];
-                        this.displayCafes(); // Show "No cafes found" message
-                    } else {
+                    if (filteredResults.length > 0) {
                         this.processCafeResults(filteredResults);
+                    } else {
+                        this.cafes = [];
+                        this.hideLoading();
+                        this.displayCafes();
                     }
                 } else {
-                    console.error('Places search failed:', status);
-                    
-                    if (status === google.maps.places.PlacesServiceStatus.ZERO_RESULTS && radius < 20000) {
-                        // Try larger radius if zero results
-                        const newRadius = radius * 2;
-                        console.log(`Zero results, increasing radius to ${newRadius}m`);
-                        this.searchNearbyCafes(newRadius, attemptCount + 1);
-                    } else if (attemptCount === 0) {
-                        // Try alternative terms as fallback
-                        this.searchWithAlternativeTerms(radius, attemptCount + 1);
-                    } else {
-                        console.log('All search attempts failed, showing no results message');
-                        this.showError('Unable to find nearby cafes. Please try again.');
-                        this.hideLoading();
-                        this.cafes = [];
-                        this.displayCafes(); // Will show "No cafes found" message
-                    }
+                    this.cafes = [];
+                    this.hideLoading();
+                    this.displayCafes();
                 }
             });
         } catch (error) {
-            console.error('Error in nearbySearch:', error);
+            console.error('Client-side search error:', error);
             this.showError('Error searching for cafes. Please try again.');
             this.hideLoading();
-            this.cafes = [];
-            this.displayCafes(); // Will show "No cafes found" message
         }
     }
-    
+
     // Alternative search terms if main search fails
     searchWithAlternativeTerms(radius, attemptCount = 0) {
         console.log('Trying alternative search terms with radius:', radius, 'attempt:', attemptCount + 1);
@@ -1430,31 +1456,33 @@ class CaffyRuteGoogleMaps {
                         cafe.distance = this.calculateDistance(userLat, userLng, cafeLat, cafeLng);
                         console.log(`Calculated distance for ${cafe.name}: ${cafe.distance.toFixed(2)}km`);
                     } else {
-                        console.warn(`Invalid coordinates for ${cafe.name}:`, 
+                        console.warn(`Invalid coordinates for ${cafe.name}:`,
                                     {userLat, userLng, cafeLat, cafeLng});
-                        cafe.distance = 999; // Put at the end if coordinates are invalid
+                        cafe.distance = null;
                     }
                 } else {
                     console.warn(`Missing location data for ${cafe.name}`);
-                    cafe.distance = 999; // Put at the end if missing location data
+                    cafe.distance = null;
                 }
             }
         }
         
         // Ensure all cafes have a valid distance value
         this.cafes.forEach(cafe => {
-            if (isNaN(cafe.distance) || cafe.distance < 0) {
-                cafe.distance = 999; // Default distance for invalid values
+            if (cafe.distance !== null && (isNaN(cafe.distance) || cafe.distance < 0)) {
+                cafe.distance = null;
             }
         });
-        
-        // Sort by distance
+
+        // Sort by distance (null distances go to end)
         this.cafes.sort((a, b) => {
-            // Primary sort by distance
-            return (a.distance || 999) - (b.distance || 999);
+            if (a.distance === null && b.distance === null) return 0;
+            if (a.distance === null) return 1;
+            if (b.distance === null) return -1;
+            return a.distance - b.distance;
         });
-        
-        console.log('Sorted cafes by distance:', this.cafes.map(c => `${c.name}: ${c.distance.toFixed(2)}km`).slice(0, 5));
+
+        console.log('Sorted cafes by distance:', this.cafes.map(c => `${c.name}: ${c.distance !== null ? c.distance.toFixed(2) + 'km' : 'unknown'}`).slice(0, 5));
     }
     
     // Sort cafes by specified criteria
@@ -1827,7 +1855,7 @@ class CaffyRuteGoogleMaps {
                         <span class="rating-text">${(cafe.rating || 0).toFixed(1)} (${cafe.reviewCount || 0})</span>
                     </div>
                     <div class="cafe-meta">
-                        <span class="distance"><i class="fas fa-map-marker-alt"></i> ${(cafe.distance > 0 ? cafe.distance : 0.1).toFixed(1)} km</span>
+                        <span class="distance"><i class="fas fa-map-marker-alt"></i> ${cafe.distance !== null ? cafe.distance.toFixed(1) + ' km' : 'Distance unknown'}</span>
                         <span class="status ${statusClass}"><i class="fas fa-clock"></i> ${statusText}</span>
                         ${cafe.address ? `<span class="address-snippet"><i class="fas fa-location-dot"></i> ${cafe.address.split(',')[0]}</span>` : ''}
                     </div>
@@ -2081,7 +2109,7 @@ class CaffyRuteGoogleMaps {
                 <h3 style="margin: 8px 0; color: #6B4423;">${cafe.name}</h3>
                 <div style="margin: 4px 0;">${stars} ${cafe.rating.toFixed(1)} (${cafe.reviewCount})</div>
                 <p style="margin: 4px 0; color: #666; font-size: 12px;">${cafe.address}</p>
-                <p style="margin: 4px 0; color: #666; font-size: 12px;">${cafe.distance.toFixed(1)} km away</p>
+                <p style="margin: 4px 0; color: #666; font-size: 12px;">${cafe.distance !== null ? cafe.distance.toFixed(1) + ' km away' : 'Distance unknown'}</p>
                 <button onclick="getDirections(${cafe.location.lat}, ${cafe.location.lng}, '${cafe.name}')" 
                         style="background: #6B4423; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; margin-top: 8px;">
                     Get Directions
@@ -2192,37 +2220,59 @@ class CaffyRuteGoogleMaps {
     }
     
     // Unified search - first tries location search, then name search
-    unifiedSearch(query) {
+    async unifiedSearch(query) {
         console.log('Performing unified search for:', query);
         this.showLoading(`Searching for "${query}"...`);
-        
-        // First attempt: Try to geocode as a location
-        this.geocoder.geocode({ address: query }, (results, status) => {
-            if (status === google.maps.GeocoderStatus.OK && results.length > 0) {
-                console.log('Location found, searching cafes nearby');
-                const location = results[0].geometry.location;
+
+        try {
+            const apiBase = (window.CONFIG && window.CONFIG.API_BASE_URL) || '';
+            const response = await fetch(`${apiBase}/api/geocode?address=${encodeURIComponent(query)}`);
+            const data = await response.json();
+
+            if (data.success) {
+                console.log('Location found via API, searching cafes nearby');
+                const location = { lat: data.lat, lng: data.lng };
                 this.userLocation = location;
-                
+                this.locationReady = true;
+
                 // Update map center
                 if (this.map) {
                     this.map.setCenter(location);
                     this.map.setZoom(14);
                 }
-                
+
                 // Add marker for the location
                 this.addLocationMarker(location);
-                
+
                 // Search for cafes near this location
                 this.searchNearbyCafes();
-                
-                // Also search for cafes with the name matching the query
-                this.searchCafesByName(query);
             } else {
-                console.log('Not found as location, searching as cafe name');
-                // Second attempt: Search for cafes with this name
+                console.log('Geocoding failed, searching as cafe name');
                 this.searchCafesByName(query);
             }
-        });
+        } catch (error) {
+            console.error('Geocode API error:', error);
+            // Fallback to client-side geocoding if backend unavailable
+            if (this.geocoder) {
+                this.geocoder.geocode({ address: query }, (results, status) => {
+                    if (status === google.maps.GeocoderStatus.OK && results.length > 0) {
+                        const location = results[0].geometry.location;
+                        this.userLocation = location;
+                        this.locationReady = true;
+                        if (this.map) {
+                            this.map.setCenter(location);
+                            this.map.setZoom(14);
+                        }
+                        this.addLocationMarker(location);
+                        this.searchNearbyCafes();
+                    } else {
+                        this.searchCafesByName(query);
+                    }
+                });
+            } else {
+                this.searchCafesByName(query);
+            }
+        }
     }
     
     // Search for cafes by name
@@ -2331,7 +2381,7 @@ function showCafeModal(cafe) {
                     </div>
                     
                     <p><i class="fas fa-map-marker-alt"></i> ${cafe.address}</p>
-                    <p><i class="fas fa-route"></i> ${cafe.distance.toFixed(1)} km away</p>
+                    <p><i class="fas fa-route"></i> ${cafe.distance !== null ? cafe.distance.toFixed(1) + ' km away' : 'Distance unknown'}</p>
                     
                     ${cafe.phone ? `<p><i class="fas fa-phone"></i> ${cafe.phone}</p>` : ''}
                     ${cafe.website ? `<p><i class="fas fa-globe"></i> <a href="${cafe.website}" target="_blank">Visit Website</a></p>` : ''}

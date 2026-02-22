@@ -1,124 +1,117 @@
 // Adds additional methods to the CaffyRuteGoogleMaps class
-CaffyRuteGoogleMaps.prototype.getAdditionalCafeDetails = function(cafe) {
+CaffyRuteGoogleMaps.prototype.getAdditionalCafeDetails = async function(cafe) {
     // This function fetches additional details about a café when needed
-    if (!cafe.detailsLoaded && window.google && window.google.maps) {
-       // Create full-page detail view
-    const detailsPage = document.createElement('div');
-    detailsPage.className = 'cafe-details-page';
-    detailsPage.id = 'cafe-details-page';
-    
-    // Get header image
-    let headerImage = 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=1200&h=800&fit=crop&q=80';
-    if (cafe.photos && cafe.photos.length > 0) {
-        headerImage = cafe.photos[0].url.replace('400', '1200').replace('300', '800');
+    if (cafe.detailsLoaded) return cafe;
+
+    // Create a loading indicator
+    const loadingDetails = document.createElement('div');
+    loadingDetails.className = 'loading-details';
+    loadingDetails.innerHTML = '<div class="loading-spinner"></div><p>Loading additional details...</p>';
+
+    const detailsContent = document.querySelector('.cafe-details-content');
+    if (detailsContent) {
+        detailsContent.prepend(loadingDetails);
     }
-    
-    const stars = window.caffyRuteApp.generateStars(cafe.rating || 0);
-    const priceSymbols = '$'.repeat(Math.max(1, cafe.priceLevel || 2));
-    
-    // Check if it's a favorite
-    const isFavorite = window.favoriteManager && window.favoriteManager.isFavorite(cafe.id);
-    const favoriteClass = isFavorite ? 'favorited' : '';
-    const heartIconClass = isFavorite ? 'fas fa-heart' : 'far fa-heart';
-    const favoriteText = isFavorite ? 'Remove Favorite' : 'Add to Favorites';
-    
-    console.log('Cafe details:', cafe);
-    console.log('Checking if cafe has reviews:', cafe.reviews ? cafe.reviews.length : 'No reviews');
-        
-        // Create a loading indicator
-        const loadingDetails = document.createElement('div');
-        loadingDetails.className = 'loading-details';
-        loadingDetails.innerHTML = '<div class="loading-spinner"></div><p>Loading additional details...</p>';
-        
-        const detailsContent = document.querySelector('.cafe-details-content');
-        if (detailsContent) {
-            detailsContent.prepend(loadingDetails);
+
+    try {
+        const apiBase = (window.CONFIG && window.CONFIG.API_BASE_URL) || '';
+        let url = `${apiBase}/api/cafe-details?placeId=${cafe.id}`;
+        if (this.userLocation) {
+            url += `&lat=${this.userLocation.lat}&lng=${this.userLocation.lng}`;
         }
-        
-        // Use the Places API to get more details
-        const request = {
-            placeId: cafe.id,
-            fields: [
-                'photos', 'reviews', 'opening_hours', 'website', 
-                'formatted_phone_number', 'price_level', 'rating',
-                'user_ratings_total', 'formatted_address'
-            ]
-        };
-        
-        // Get detailed place information
-        const service = new google.maps.places.PlacesService(document.createElement('div'));
-        service.getDetails(request, (place, status) => {
-            console.log('Place details status:', status);
-            
-            // Remove loading indicator
-            const loadingEl = document.querySelector('.loading-details');
-            if (loadingEl) loadingEl.remove();
-            
-            if (status === google.maps.places.PlacesServiceStatus.OK && place) {
-                console.log('Got additional place details:', place);
-                
-                // Update café with additional details
-                if (place.photos && place.photos.length > 0) {
-                    cafe.photos = place.photos.map(photo => ({
-                        url: photo.getUrl({maxWidth: 800, maxHeight: 600})
-                    }));
-                    
-                    // Update the header image if we have a better one
-                    if (cafe.photos.length > 0) {
-                        const headerImg = document.querySelector('.cafe-details-header img');
-                        if (headerImg) {
-                            headerImg.src = cafe.photos[0].url;
-                        }
-                    }
-                    
-                    // Update photos section
-                    this.updateCafePhotosSection(cafe);
+
+        const response = await fetch(url);
+        const data = await response.json();
+
+        // Remove loading indicator
+        const loadingEl = document.querySelector('.loading-details');
+        if (loadingEl) loadingEl.remove();
+
+        if (data.success && data.cafe) {
+            const details = data.cafe;
+
+            // Update cafe with additional details
+            if (details.photos && details.photos.length > 0) {
+                cafe.photos = details.photos;
+
+                // Update header image
+                const headerImg = document.querySelector('.cafe-details-header img');
+                if (headerImg && cafe.photos.length > 0) {
+                    headerImg.src = cafe.photos[0].url;
                 }
-                
-                // Update reviews
-                if (place.reviews && place.reviews.length > 0) {
-                    console.log('Found reviews:', place.reviews.length);
-                    cafe.reviews = place.reviews.map(review => ({
-                        author: review.author_name,
-                        rating: review.rating,
-                        text: review.text,
-                        time: review.relative_time_description,
-                        profilePhoto: review.profile_photo_url
-                    }));
-                    
-                    // Update reviews section
-                    this.updateCafeReviewsSection(cafe);
-                } else {
-                    console.log('No reviews found for:', cafe.name);
-                }
-                
-                // Update opening hours
-                if (place.opening_hours && place.opening_hours.weekday_text) {
-                    cafe.openingHours = place.opening_hours.weekday_text;
-                    
-                    // Update hours section
-                    this.updateCafeHoursSection(cafe);
-                }
-                
-                // Update additional info
-                if (place.website) cafe.website = place.website;
-                if (place.formatted_phone_number) cafe.phone = place.formatted_phone_number;
-                if (place.price_level) cafe.priceLevel = place.price_level;
-                if (place.rating) cafe.rating = place.rating;
-                if (place.user_ratings_total) cafe.reviewCount = place.user_ratings_total;
-                if (place.formatted_address) cafe.address = place.formatted_address;
-                
-                // Update basic info section
-                this.updateCafeInfoSection(cafe);
-                
-                // Mark as loaded to prevent duplicate requests
-                cafe.detailsLoaded = true;
-            } else {
-                console.error('Failed to get place details:', status);
+
+                this.updateCafePhotosSection(cafe);
             }
-        });
+
+            if (details.reviews && details.reviews.length > 0) {
+                cafe.reviews = details.reviews;
+                this.updateCafeReviewsSection(cafe);
+            }
+
+            if (details.openingHours && details.openingHours.length > 0) {
+                cafe.openingHours = details.openingHours;
+                this.updateCafeHoursSection(cafe);
+            }
+
+            if (details.website) cafe.website = details.website;
+            if (details.phone) cafe.phone = details.phone;
+            if (details.priceLevel !== null) cafe.priceLevel = details.priceLevel;
+            if (details.rating) cafe.rating = details.rating;
+            if (details.reviewCount) cafe.reviewCount = details.reviewCount;
+            if (details.address) cafe.address = details.address;
+            if (details.distance !== null) cafe.distance = details.distance;
+
+            this.updateCafeInfoSection(cafe);
+            cafe.detailsLoaded = true;
+        }
+    } catch (error) {
+        console.error('Error fetching cafe details from API:', error);
+
+        // Remove loading indicator
+        const loadingEl = document.querySelector('.loading-details');
+        if (loadingEl) loadingEl.remove();
+
+        // Fallback to client-side Places API if available
+        if (window.google && window.google.maps) {
+            const service = new google.maps.places.PlacesService(document.createElement('div'));
+            service.getDetails({
+                placeId: cafe.id,
+                fields: [
+                    'photos', 'reviews', 'opening_hours', 'website',
+                    'formatted_phone_number', 'price_level', 'rating',
+                    'user_ratings_total', 'formatted_address'
+                ]
+            }, (place, status) => {
+                if (status === google.maps.places.PlacesServiceStatus.OK && place) {
+                    if (place.photos && place.photos.length > 0) {
+                        cafe.photos = place.photos.map(photo => ({
+                            url: photo.getUrl({maxWidth: 800, maxHeight: 600})
+                        }));
+                        this.updateCafePhotosSection(cafe);
+                    }
+                    if (place.reviews && place.reviews.length > 0) {
+                        cafe.reviews = place.reviews.map(review => ({
+                            author: review.author_name,
+                            rating: review.rating,
+                            text: review.text,
+                            time: review.relative_time_description,
+                            profilePhoto: review.profile_photo_url
+                        }));
+                        this.updateCafeReviewsSection(cafe);
+                    }
+                    if (place.opening_hours && place.opening_hours.weekday_text) {
+                        cafe.openingHours = place.opening_hours.weekday_text;
+                        this.updateCafeHoursSection(cafe);
+                    }
+                    if (place.website) cafe.website = place.website;
+                    if (place.formatted_phone_number) cafe.phone = place.formatted_phone_number;
+                    this.updateCafeInfoSection(cafe);
+                    cafe.detailsLoaded = true;
+                }
+            });
+        }
     }
-    
+
     return cafe;
 };
 
@@ -339,7 +332,7 @@ function showCafeDetailPage(cafe) {
                     <span>${cafe.rating ? cafe.rating.toFixed(1) : 'N/A'} (${cafe.reviewCount || 0} reviews)</span>
                 </div>
                 <div class="cafe-details-meta">
-                    <span><i class="fas fa-map-marker-alt"></i> ${(cafe.distance || 0).toFixed(1)} km away</span>
+                    <span><i class="fas fa-map-marker-alt"></i> ${cafe.distance !== null ? cafe.distance.toFixed(1) + ' km away' : 'Distance unknown'}</span>
                     <span><i class="fas fa-dollar-sign"></i> ${priceSymbols}</span>
                     ${cafe.isOpen !== undefined ? 
                         `<span><i class="fas fa-clock"></i> ${cafe.isOpen ? 'Open now' : 'Closed'}</span>` : 

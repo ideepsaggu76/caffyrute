@@ -5,9 +5,13 @@ config.js
 
 # Environment variables
 .env
+.env.local
 
-# Node modules if used
+# Node modules
 node_modules/
+
+# Vercel
+.vercel/
 
 # IDE and editor files
 .vscode/
