@@ -1,0 +1,10 @@
+# Server-only files (not needed on Vercel)
+server.js
+Procfile
+.env
+.env.local
+.env.example
+node_modules
+.git
+README.md
+GOOGLE_MAPS_SETUP.md
